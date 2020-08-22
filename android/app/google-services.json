@@ -1,0 +1,40 @@
+{
+  "project_info": {
+    "project_number": "670134176077",
+    "firebase_url": "https://myrke-189201.firebaseio.com",
+    "project_id": "myrke-189201",
+    "storage_bucket": "myrke-189201.appspot.com"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:670134176077:android:c028bf9a3c512b75558f04",
+        "android_client_info": {
+          "package_name": "org.roorkee.rkeapp"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "670134176077-lg5hnt95l2ncj0cnogdlth94tqs4l1mj.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyDK72pOl-TSRFj2HUMyo9oP5ZEftGd-Afc"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": [
+            {
+              "client_id": "670134176077-lg5hnt95l2ncj0cnogdlth94tqs4l1mj.apps.googleusercontent.com",
+              "client_type": 3
+            }
+          ]
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
