@@ -1,7 +1,14 @@
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'auth.dart';
+import 'package:firebase_core/firebase_core.dart';
+import 'dart:async';
 
-void main() => runApp(MyApp());
+Future<void> main() async {
+  WidgetsFlutterBinding.ensureInitialized();
+  await Firebase.initializeApp();
+  runApp(MyApp());
+}
 
 class MyApp extends StatelessWidget {
   @override
@@ -10,7 +17,7 @@ class MyApp extends StatelessWidget {
       title: 'RkeApp Login',
       home: Scaffold(
         appBar: AppBar(
-          title: Text('Flutterbase'),
+          title: Text('RkeApp'),
           backgroundColor: Colors.amber,
         ),
         body: Center(
@@ -30,21 +37,27 @@ class UserProfile extends StatefulWidget {
 }
 
 class UserProfileState extends State<UserProfile> {
-  Map<String, dynamic> _profile;
+  String _name;
   bool _loading = false;
 
   @override
   initState() {
     super.initState();
-    authService.profile.listen((state) => setState(() => _profile = state));
-
+    _name = "";
+    authService.user.listen((state) => {
+      if (state != null && state.displayName is String){
+        setState(() => {_name = state.displayName})
+      } else {
+        setState(() => {_name = ""})
+      }
+    });
     authService.loading.listen((state) => setState(() => _loading = state));
   }
 
   @override
   Widget build(BuildContext context) {
     return Column(children: <Widget>[
-      Container(padding: EdgeInsets.all(20), child: Text(_profile.toString())),
+      Container(padding: EdgeInsets.all(20), child: Text('Hi ${_name}!')),
       Container(padding:EdgeInsets.all(20), child: Text('Loading: ${_loading.toString()}')),
     ]);
   }
