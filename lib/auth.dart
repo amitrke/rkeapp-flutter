@@ -1,3 +1,4 @@
+import 'package:RkeApp/models.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:google_sign_in/google_sign_in.dart';
 import 'package:firebase_database/firebase_database.dart';
@@ -8,26 +9,18 @@ class AuthService {
   final FirebaseAuth _auth = FirebaseAuth.instance;
 
   Stream<User> user; // firebase user
-  Stream<Map<String, dynamic>> profile; // custom user data in db
   PublishSubject loading = PublishSubject();
+  Stream<RkeUser> rkeUserStream;
 
   // constructor
   AuthService() {
     user = _auth.authStateChanges();
-    user.listen((event) {
-      if (event != null && event.uid != null) {
-        profile = mapStream({
-          "id": event.uid,
-          "name": event.displayName,
-          "emailVerified": event.emailVerified
-        });
-      }
-    });
+    rkeUserStream = userStream(user);
   }
 
-  Stream<Map<String, dynamic>> mapStream(Map source) async* {
-    for (var k in source.keys) {
-      yield { "key": k, "value": source[k] };
+  Stream<RkeUser> userStream(Stream<User> source) async* {
+    await for (var chunk in source) {
+      yield RkeUser.fromUser(chunk);
     }
   }
 

@@ -1,8 +1,11 @@
-import 'package:firebase_auth/firebase_auth.dart';
+import 'package:RkeApp/models.dart';
+import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
 import 'auth.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'dart:async';
+import 'dart:io';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -13,20 +16,25 @@ Future<void> main() async {
 class MyApp extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
-    return MaterialApp(
-      title: 'RkeApp Login',
-      home: Scaffold(
-        appBar: AppBar(
-          title: Text('RkeApp'),
-          backgroundColor: Colors.amber,
-        ),
-        body: Center(
-          child: Column(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: <Widget>[LoginButton(), UserProfile()],
+    return MultiProvider(
+      providers: [
+        StreamProvider<RkeUser>.value(value: authService.rkeUserStream)
+      ],
+      child: MaterialApp(
+        title: 'RkeApp Login',
+        home: Scaffold(
+          appBar: AppBar(
+              title: Text('RkeApp'),
+              backgroundColor: Colors.amber
+          ),
+          body: Center(
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: <Widget>[LoginButton(), UserProfile()],
+            ),
           ),
         ),
-      ),
+      )
     );
   }
 }
@@ -39,28 +47,37 @@ class UserProfile extends StatefulWidget {
 class UserProfileState extends State<UserProfile> {
   String _name;
   bool _loading = false;
-
-  @override
-  initState() {
-    super.initState();
-    _name = "";
-    authService.user.listen((state) => {
-      if (state != null && state.displayName is String){
-        setState(() => {_name = state.displayName})
-      } else {
-        setState(() => {_name = ""})
-      }
-    });
-    authService.loading.listen((state) => setState(() => _loading = state));
-  }
+  String fileName = '';
 
   @override
   Widget build(BuildContext context) {
+    final rkeUser = Provider.of<RkeUser>(context); // gets the firebase user
+    if (rkeUser != null){
+      _name = rkeUser.name;
+    } else {
+      _name = "";
+    }
     return Column(children: <Widget>[
       Container(padding: EdgeInsets.all(20), child: Text('Hi ${_name}!')),
-      Container(padding:EdgeInsets.all(20), child: Text('Loading: ${_loading.toString()}')),
+      ListTile(
+        title: Text('Image', style: TextStyle(color: Colors.white),),
+        leading: Icon(Icons.image, color: Colors.redAccent,),
+        onTap: () {
+          filePicker(context);
+        },
+      )
     ]);
   }
+
+  Future filePicker(BuildContext context) async {
+    try {
+        File file = await FilePicker.getFile();
+        print(file.path);
+      }
+      catch(e){
+        print(e);
+      }
+    }
 }
 
 class LoginButton extends StatelessWidget {
