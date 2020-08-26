@@ -1,30 +1,37 @@
 import 'package:RkeApp/models.dart';
 import 'package:file_picker/file_picker.dart';
+import 'package:firebase_storage/firebase_storage.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'auth.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'dart:async';
 import 'dart:io';
+import 'package:path/path.dart' as p;
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
-  await Firebase.initializeApp();
-  runApp(MyApp());
+  final FirebaseApp app = await Firebase.initializeApp();
+  final FirebaseStorage storage = FirebaseStorage(
+      app: app, storageBucket: 'gs://myrke-189201.appspot.com');
+  runApp(MultiProvider(
+      providers: [
+        ChangeNotifierProvider<RkeUser>.value(value: authService.rkeUser),
+      ],
+      child: MyApp(storage: storage))
+  );
 }
 
 class MyApp extends StatelessWidget {
+  final FirebaseStorage storage;
+  MyApp({this.storage});
   @override
   Widget build(BuildContext context) {
-    return MultiProvider(
-      providers: [
-        StreamProvider<RkeUser>.value(value: authService.rkeUserStream)
-      ],
-      child: MaterialApp(
+    return MaterialApp(
         title: 'RkeApp Login',
         home: Scaffold(
           appBar: AppBar(
-              title: Text('RkeApp'),
+              title: Text(Provider.of<RkeUser>(context, listen: true).name),
               backgroundColor: Colors.amber
           ),
           body: Center(
@@ -34,8 +41,7 @@ class MyApp extends StatelessWidget {
             ),
           ),
         ),
-      )
-    );
+      );
   }
 }
 
@@ -46,7 +52,6 @@ class UserProfile extends StatefulWidget {
 
 class UserProfileState extends State<UserProfile> {
   String _name;
-  bool _loading = false;
   String fileName = '';
 
   @override
@@ -58,21 +63,22 @@ class UserProfileState extends State<UserProfile> {
       _name = "";
     }
     return Column(children: <Widget>[
-      Container(padding: EdgeInsets.all(20), child: Text('Hi ${_name}!')),
+      Container(padding: EdgeInsets.all(20), child: Text('Hi $_name!')),
       ListTile(
         title: Text('Image', style: TextStyle(color: Colors.white),),
         leading: Icon(Icons.image, color: Colors.redAccent,),
         onTap: () {
-          filePicker(context);
+          filePicker(context, rkeUser);
         },
       )
     ]);
   }
 
-  Future filePicker(BuildContext context) async {
+  Future filePicker(BuildContext context, RkeUser rkeUser) async {
     try {
         File file = await FilePicker.getFile();
         print(file.path);
+        _uploadFile(file, p.basename(file.path), rkeUser.uid);
       }
       catch(e){
         print(e);
@@ -103,4 +109,14 @@ class LoginButton extends StatelessWidget {
           }
         });
   }
+}
+
+Future<String> _uploadFile(File file, String filename, String uid) async {
+  final FirebaseStorage _storage = FirebaseStorage(storageBucket: 'gs://myrke-189201.appspot.com');
+  StorageReference storageReference = _storage.ref().child("users/$uid/$filename");
+  final StorageUploadTask uploadTask = storageReference.putFile(file);
+  final StorageTaskSnapshot downloadUrl = (await uploadTask.onComplete);
+  final String url = (await downloadUrl.ref.getDownloadURL());
+  print("URL is $url");
+  return url;
 }

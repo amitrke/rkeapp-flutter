@@ -11,17 +11,15 @@ class AuthService {
   Stream<User> user; // firebase user
   PublishSubject loading = PublishSubject();
   Stream<RkeUser> rkeUserStream;
+  RkeUser rkeUser;
 
   // constructor
   AuthService() {
     user = _auth.authStateChanges();
-    rkeUserStream = userStream(user);
-  }
-
-  Stream<RkeUser> userStream(Stream<User> source) async* {
-    await for (var chunk in source) {
-      yield RkeUser.fromUser(chunk);
-    }
+    rkeUser = new RkeUser();
+    user.listen((event) {
+      rkeUser.changeUser(event);
+    });
   }
 
   Future<User> googleSignIn() async {
