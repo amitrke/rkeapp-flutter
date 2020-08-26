@@ -31,8 +31,18 @@ class MyApp extends StatelessWidget {
         title: 'RkeApp Login',
         home: Scaffold(
           appBar: AppBar(
-              title: Text(Provider.of<RkeUser>(context, listen: true).name),
-              backgroundColor: Colors.amber
+              title: Text('RkeApp'),
+              backgroundColor: Colors.blueAccent,
+              actions: <Widget>[
+                CircleAvatar(
+                  radius: 30,
+                  backgroundColor: Colors.indigo,
+                  child: CircleAvatar(
+                    radius: 25,
+                    backgroundImage: NetworkImage(Provider.of<RkeUser>(context, listen: true).photoURL),
+                  ),
+                )
+              ],
           ),
           body: Center(
             child: Column(
