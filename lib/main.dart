@@ -29,28 +29,7 @@ class MyApp extends StatelessWidget {
   Widget build(BuildContext context) {
     return MaterialApp(
         title: 'RkeApp Login',
-        home: Scaffold(
-          appBar: AppBar(
-              title: Text('RkeApp'),
-              backgroundColor: Colors.blueAccent,
-              actions: <Widget>[
-                CircleAvatar(
-                  radius: 30,
-                  backgroundColor: Colors.indigo,
-                  child: CircleAvatar(
-                    radius: 25,
-                    backgroundImage: NetworkImage(Provider.of<RkeUser>(context, listen: true).photoURL),
-                  ),
-                )
-              ],
-          ),
-          body: Center(
-            child: Column(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: <Widget>[LoginButton(), UserProfile()],
-            ),
-          ),
-        ),
+        home: MyStatefulWidget(),
       );
   }
 }
@@ -129,4 +108,79 @@ Future<String> _uploadFile(File file, String filename, String uid) async {
   final String url = (await downloadUrl.ref.getDownloadURL());
   print("URL is $url");
   return url;
+}
+
+class MyStatefulWidget extends StatefulWidget {
+  MyStatefulWidget({Key key}) : super(key: key);
+
+  @override
+  _MyStatefulWidgetState createState() => _MyStatefulWidgetState();
+}
+
+class _MyStatefulWidgetState extends State<MyStatefulWidget> {
+  int _selectedIndex = 0;
+  static const TextStyle optionStyle =
+  TextStyle(fontSize: 30, fontWeight: FontWeight.bold);
+  static const List<Widget> _widgetOptions = <Widget>[
+    Text(
+      'Index 0: Home',
+      style: optionStyle,
+    ),
+    Text(
+      'Index 1: Business',
+      style: optionStyle,
+    ),
+    Text(
+      'Index 2: School',
+      style: optionStyle,
+    ),
+  ];
+
+  void _onItemTapped(int index) {
+    setState(() {
+      _selectedIndex = index;
+    });
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(
+        title: Text('RkeApp'),
+        backgroundColor: Colors.blueAccent,
+        actions: <Widget>[
+          CircleAvatar(
+            radius: 25,
+            backgroundColor: Colors.indigo,
+            child: CircleAvatar(
+              radius: 22,
+              backgroundImage: NetworkImage(Provider.of<RkeUser>(context, listen: true).photoURL),
+            ),
+          )
+        ],
+      ),
+      body: Center(
+        child: (_selectedIndex == 1) ? UserProfile() : _widgetOptions.elementAt(_selectedIndex),
+      ),
+      bottomNavigationBar: BottomNavigationBar(
+        items: const <BottomNavigationBarItem>[
+          BottomNavigationBarItem(
+            icon: Icon(Icons.home),
+            title: Text('Home'),
+          ),
+          BottomNavigationBarItem(
+            icon: Icon(Icons.account_box),
+            title: Text('MyPosts'),
+          ),
+          BottomNavigationBarItem(
+            icon: Icon(Icons.child_friendly),
+            title: Text('LocalAds'),
+          ),
+        ],
+        currentIndex: _selectedIndex,
+        selectedItemColor: Colors.amber[800],
+        onTap: _onItemTapped,
+      ),
+    );
+  }
 }
