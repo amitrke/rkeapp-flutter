@@ -1,6 +1,7 @@
 import 'package:RkeApp/home.dart';
 import 'package:RkeApp/models.dart';
 import 'package:RkeApp/myposts.dart';
+import 'package:RkeApp/posts.dart';
 import 'package:firebase_storage/firebase_storage.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
@@ -11,14 +12,12 @@ import 'dart:async';
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
   final FirebaseApp app = await Firebase.initializeApp();
-  final FirebaseStorage storage = FirebaseStorage(
-      app: app, storageBucket: 'gs://myrke-189201.appspot.com');
-  runApp(MultiProvider(
-      providers: [
-        ChangeNotifierProvider<RkeUser>.value(value: authService.rkeUser),
-      ],
-      child: MyApp(storage: storage))
-  );
+  final FirebaseStorage storage =
+      FirebaseStorage(app: app, storageBucket: 'gs://myrke-189201.appspot.com');
+  runApp(MultiProvider(providers: [
+    ChangeNotifierProvider<RkeUser>.value(value: authService.rkeUser),
+    ChangeNotifierProvider<AlbumData>.value(value: postService.album)
+  ], child: MyApp(storage: storage)));
 }
 
 class MyApp extends StatelessWidget {
@@ -27,9 +26,9 @@ class MyApp extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
-        title: 'RkeApp Login',
-        home: MyStatefulWidget(),
-      );
+      title: 'RkeApp Login',
+      home: MyStatefulWidget(),
+    );
   }
 }
 
@@ -43,7 +42,7 @@ class MyStatefulWidget extends StatefulWidget {
 class _MyStatefulWidgetState extends State<MyStatefulWidget> {
   int _selectedIndex = 0;
   static const TextStyle optionStyle =
-  TextStyle(fontSize: 30, fontWeight: FontWeight.bold);
+      TextStyle(fontSize: 30, fontWeight: FontWeight.bold);
   static const List<Widget> _widgetOptions = <Widget>[
     Text(
       'Index 0: Home',
@@ -65,14 +64,12 @@ class _MyStatefulWidgetState extends State<MyStatefulWidget> {
     });
   }
 
-  navigate(int index){
-    if (index == 0){
+  navigate(int index) {
+    if (index == 0) {
       return HomeWidget();
-    }
-    else if (index == 1) {
+    } else if (index == 1) {
       return MyPostsWidget();
-    }
-    else {
+    } else {
       return _widgetOptions.elementAt(_selectedIndex);
     }
   }
@@ -89,7 +86,8 @@ class _MyStatefulWidgetState extends State<MyStatefulWidget> {
             backgroundColor: Colors.indigo,
             child: CircleAvatar(
               radius: 22,
-              backgroundImage: NetworkImage(Provider.of<RkeUser>(context, listen: true).photoURL),
+              backgroundImage: NetworkImage(
+                  Provider.of<RkeUser>(context, listen: true).photoURL),
             ),
           )
         ],
