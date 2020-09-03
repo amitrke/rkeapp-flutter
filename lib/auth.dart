@@ -27,14 +27,15 @@ class AuthService {
       loading.add(true);
       GoogleSignInAccount googleSignInAccount = await _googleSignIn.signIn();
       GoogleSignInAuthentication googleAuth =
-      await googleSignInAccount.authentication;
+          await googleSignInAccount.authentication;
 
       final AuthCredential credential = GoogleAuthProvider.credential(
         accessToken: googleAuth.accessToken,
         idToken: googleAuth.idToken,
       );
 
-      UserCredential userCredential = await _auth.signInWithCredential(credential);
+      UserCredential userCredential =
+          await _auth.signInWithCredential(credential);
 
       updateUserData(userCredential.user);
       print("user name: ${userCredential.user.displayName}");
@@ -47,14 +48,17 @@ class AuthService {
   }
 
   void updateUserData(User user) async {
-    var existing = await FirebaseDatabase.instance.reference().child('users').child(user.uid).once();
+    var existing = await FirebaseDatabase.instance
+        .reference()
+        .child('users')
+        .child(user.uid)
+        .once();
     print(existing);
-    FirebaseDatabase.instance.reference().child('users').child(user.uid)
-        .set({
-          'name': user.displayName,
-          'email': user.email,
-          'photoURL': user.photoURL,
-          'lastSeen': DateTime.now().toIso8601String()
+    FirebaseDatabase.instance.reference().child('users').child(user.uid).set({
+      'name': user.displayName,
+      'email': user.email,
+      'photoURL': user.photoURL,
+      'lastSeen': DateTime.now().toIso8601String()
     });
   }
 
@@ -66,7 +70,6 @@ class AuthService {
       return e.toString();
     }
   }
-
 }
 
 // TODO refactor global to InheritedWidget

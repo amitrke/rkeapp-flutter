@@ -7,17 +7,25 @@ class HomeWidget extends StatelessWidget {
   Widget build(BuildContext context) {
     String _name;
     final rkeUser = Provider.of<RkeUser>(context); // gets the firebase user
-    if (rkeUser != null){
+    final albumData = Provider.of<AlbumData>(context);
+
+    if (rkeUser != null) {
       _name = rkeUser.name;
     } else {
       _name = "";
     }
+
+    List<Widget> list = [ListTile()];
+
+    if (albumData != null) {
+      print(albumData);
+      albumData.images.forEach((image) {
+        list.add(ListTile(title: Text(image.path)));
+      });
+    }
+
     return Scaffold(
-      body: Center(child: Text('$_name You have pressed the button times.')),
-      floatingActionButton: FloatingActionButton(
-        tooltip: 'Increment Counter',
-        child: const Icon(Icons.add),
-      ),
+      body: ListView(children: list),
     );
   }
 }

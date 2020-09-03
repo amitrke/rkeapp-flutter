@@ -34,6 +34,8 @@ class AlbumItem {
   String path;
   String hashCd;
   String uid;
+
+  AlbumItem(this.path, this.hashCd, this.uid);
 }
 
 class AlbumData with ChangeNotifier {
@@ -43,7 +45,10 @@ class AlbumData with ChangeNotifier {
     images = new List();
   }
 
-  void addImage() {}
+  void addImage(AlbumItem item) {
+    this.images.add(item);
+    notifyListeners();
+  }
 }
 
 class UserData with ChangeNotifier {
