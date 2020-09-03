@@ -32,10 +32,11 @@ class RkeUser with ChangeNotifier {
 
 class AlbumItem {
   String path;
+  String url;
   String hashCd;
   String uid;
 
-  AlbumItem(this.path, this.hashCd, this.uid);
+  AlbumItem(this.path, this.hashCd, this.uid, this.url);
 }
 
 class AlbumData with ChangeNotifier {

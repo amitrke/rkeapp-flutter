@@ -7,13 +7,16 @@ class HomeWidget extends StatelessWidget {
   Widget build(BuildContext context) {
     final albumData = Provider.of<AlbumData>(context);
 
-    List<Widget> list = [ListTile()];
+    List<Widget> list = [];
 
     if (albumData != null) {
       print(albumData);
-      albumData.images.forEach((image) {
-        list.add(ListTile(title: Text(image.path)));
-      });
+      for (final img in albumData.images) {
+        list.add(Image.network(
+          img.url,
+          height: 240.0,
+        ));
+      }
     }
 
     return Scaffold(
