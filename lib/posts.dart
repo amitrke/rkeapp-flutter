@@ -1,6 +1,5 @@
 import 'package:RkeApp/models.dart';
 import 'package:firebase_database/firebase_database.dart';
-import 'package:firebase_database/ui/firebase_sorted_list.dart';
 import 'package:firebase_storage/firebase_storage.dart';
 
 class PostsService {
