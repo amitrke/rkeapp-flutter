@@ -6,14 +6,13 @@ import 'package:firebase_storage/firebase_storage.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'auth.dart';
-import 'package:firebase_core/firebase_core.dart';
 import 'dart:async';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
   final FirebaseApp app = await Firebase.initializeApp();
   final FirebaseStorage storage =
-      FirebaseStorage(app: app, storageBucket: 'gs://myrke-189201.appspot.com');
+      FirebaseStorage.instanceFor(app: app, bucket: 'gs://myrke-189201.appspot.com');
   runApp(MultiProvider(providers: [
     ChangeNotifierProvider<RkeUser>.value(value: authService.rkeUser),
     ChangeNotifierProvider<AlbumData>.value(value: postService.album)
@@ -99,19 +98,19 @@ class _MyStatefulWidgetState extends State<MyStatefulWidget> {
         items: const <BottomNavigationBarItem>[
           BottomNavigationBarItem(
             icon: Icon(Icons.home),
-            title: Text('Home'),
+            label: 'Home',
           ),
           BottomNavigationBarItem(
             icon: Icon(Icons.account_box),
-            title: Text('MyPosts'),
+            label: 'MyPosts',
           ),
           BottomNavigationBarItem(
             icon: Icon(Icons.child_friendly),
-            title: Text('LocalAds'),
+            label: 'LocalAds',
           ),
         ],
         currentIndex: _selectedIndex,
-        selectedItemColor: Colors.amber[800],
+        selectedItemColor: Colors.amber,
         onTap: _onItemTapped,
       ),
     );
