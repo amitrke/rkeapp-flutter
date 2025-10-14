@@ -1,7 +1,8 @@
-import 'package:RkeApp/home.dart';
-import 'package:RkeApp/models.dart';
-import 'package:RkeApp/myposts.dart';
-import 'package:RkeApp/posts.dart';
+import 'home.dart';
+import 'models.dart';
+import 'myposts.dart';
+import 'posts.dart';
+import 'package:firebase_core/firebase_core.dart';
 import 'package:firebase_storage/firebase_storage.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
@@ -21,7 +22,7 @@ Future<void> main() async {
 
 class MyApp extends StatelessWidget {
   final FirebaseStorage storage;
-  MyApp({this.storage});
+  const MyApp({super.key, required this.storage});
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
@@ -32,7 +33,7 @@ class MyApp extends StatelessWidget {
 }
 
 class MyStatefulWidget extends StatefulWidget {
-  MyStatefulWidget({Key key}) : super(key: key);
+  const MyStatefulWidget({super.key});
 
   @override
   _MyStatefulWidgetState createState() => _MyStatefulWidgetState();
@@ -85,8 +86,8 @@ class _MyStatefulWidgetState extends State<MyStatefulWidget> {
             backgroundColor: Colors.indigo,
             child: CircleAvatar(
               radius: 22,
-              backgroundImage: NetworkImage(
-                  Provider.of<RkeUser>(context, listen: true).photoURL),
+        backgroundImage: NetworkImage(
+          Provider.of<RkeUser>(context, listen: true).photoURL),
             ),
           )
         ],

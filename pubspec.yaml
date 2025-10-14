@@ -18,26 +18,29 @@ publish_to: 'none' # Remove this line if you wish to publish to pub.dev
 version: 1.0.0+1
 
 environment:
-  sdk: ">=2.12.0 <4.0.0"
+  sdk: ">=3.7.0 <4.0.0"
+  flutter: ">=3.27.0"
 
 dependencies:
   flutter:
     sdk: flutter
-  firebase_core: ^3.13.1
-  firebase_analytics: ^11.4.6
-  firebase_auth: ^5.5.4
-  google_sign_in: ^6.1.6
+  firebase_core: ^4.0.0
+  firebase_analytics: ^12.0.0
+  firebase_auth: ^6.0.0
+  google_sign_in: ^7.1.1
   rxdart: ^0.28.0
-  cupertino_icons: ^1.0.6
-  firebase_database: ^11.3.6
-  file_picker: ^10.1.9
-  provider: ^6.0.5
-  firebase_storage: ^12.4.6
+  cupertino_icons: ^1.0.8
+  firebase_database: ^12.0.0
+  file_picker: ^10.2.4
+  provider: ^6.1.5
+  firebase_storage: ^13.0.0
+  image: ^4.5.4
+  path: ^1.9.1
 
 dev_dependencies:
   flutter_test:
     sdk: flutter
-  flutter_launcher_icons: "^0.14.3"
+  flutter_launcher_icons: "^0.14.4"
 
 # For information on the generic Dart part of this file, see the
 # following page: https://dart.dev/tools/pub/pubspec

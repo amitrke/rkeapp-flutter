@@ -1,27 +1,29 @@
-import 'package:RkeApp/models.dart';
+import 'models.dart';
 import 'package:firebase_database/firebase_database.dart';
 import 'package:firebase_storage/firebase_storage.dart';
 
 class PostsService {
-  AlbumData album;
+  AlbumData album = AlbumData();
 
   PostsService() {
-    album = new AlbumData();
     this.syncAlbum();
   }
 
   syncAlbum() async {
-    final snapshot =
-        await FirebaseDatabase.instance.reference().child('album').once();
-    List uids = snapshot.value.keys.toList();
+    final db = FirebaseDatabase.instance.ref();
+    final snapshot = await db.child('album').get();
+    if (!snapshot.exists) return;
+    final albumData = snapshot.value as Map<dynamic, dynamic>;
+    final uids = albumData.keys.toList();
     for (final uid in uids) {
-      List hCodes = snapshot.value[uid].keys.toList();
-      for (final hCode in hCodes) {
-        var imgObj = snapshot.value[uid][hCode];
-        final ref = FirebaseStorage.instance.ref().child(imgObj['path']);
-        var url = await ref.getDownloadURL();
+      final userAlbum = (albumData[uid] as Map<dynamic, dynamic>);
+      for (final entry in userAlbum.entries) {
+        final hCode = entry.key.toString();
+        final imgObj = entry.value as Map<dynamic, dynamic>;
+        final ref = FirebaseStorage.instance.ref().child(imgObj['path'] as String);
+        final url = await ref.getDownloadURL();
         postService.album
-            .addImage(new AlbumItem(imgObj['path'], hCode, uid, url));
+            .addImage(AlbumItem(imgObj['path'] as String, hCode, uid as String, url));
       }
     }
   }

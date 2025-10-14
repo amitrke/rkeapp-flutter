@@ -7,24 +7,23 @@ class RkeUser with ChangeNotifier {
   String photoURL = "";
   String email = "";
 
-  RkeUser() {
-    this.uid = "";
-    this.name = "";
-    this.photoURL = "https://img.icons8.com/color/96/000000/user.png";
-    this.email = "";
-  }
+  RkeUser()
+      : uid = "",
+        name = "",
+        photoURL = "https://img.icons8.com/color/96/000000/user.png",
+        email = "";
 
-  void changeUser(User user) {
+  void changeUser(User? user) {
     if (user != null) {
-      this.uid = user.uid ?? '';
-      this.name = user.displayName ?? '';
-      this.photoURL = user.photoURL ?? '';
-      this.email = user.email ?? '';
+      uid = user.uid;
+      name = user.displayName ?? '';
+      photoURL = user.photoURL ?? '';
+      email = user.email ?? '';
     } else {
-      this.uid = "";
-      this.name = "";
-      this.photoURL = "https://img.icons8.com/color/96/000000/user.png";
-      this.email = "";
+      uid = "";
+      name = "";
+      photoURL = "https://img.icons8.com/color/96/000000/user.png";
+      email = "";
     }
     notifyListeners();
   }
@@ -40,11 +39,7 @@ class AlbumItem {
 }
 
 class AlbumData with ChangeNotifier {
-  List<AlbumItem> images;
-
-  AlbumData() {
-    images = new List();
-  }
+  List<AlbumItem> images = <AlbumItem>[];
 
   void addImage(AlbumItem item) {
     this.images.add(item);
@@ -53,11 +48,9 @@ class AlbumData with ChangeNotifier {
 }
 
 class UserData with ChangeNotifier {
-  String url;
+  String url = "";
 
-  UserData() {
-    this.url = "";
-  }
+  UserData();
 
   void changeUserData() {
     this.url = "";

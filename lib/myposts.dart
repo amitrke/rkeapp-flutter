@@ -1,12 +1,11 @@
 import 'dart:io';
 
-import 'package:RkeApp/auth.dart';
-import 'package:RkeApp/models.dart';
-import 'package:RkeApp/posts.dart';
+import 'auth.dart';
+import 'models.dart';
+import 'posts.dart';
 import 'package:file_picker/file_picker.dart';
 import 'package:firebase_database/firebase_database.dart';
 import 'package:firebase_storage/firebase_storage.dart';
-import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:path/path.dart' as p;
@@ -33,7 +32,7 @@ class MyPostsWidget extends StatelessWidget {
   }
 
   firstLine(RkeUser user) {
-    if (user != null && user.uid != "") {
+    if (user.uid != "") {
       return Text('Hi ${user.name}!');
     } else {
       return Text('Please login !');
@@ -41,7 +40,7 @@ class MyPostsWidget extends StatelessWidget {
   }
 
   loginLogoutButton(RkeUser user) {
-    if (user != null && user.uid != "") {
+    if (user.uid != "") {
       return MaterialButton(
         onPressed: () => authService.signOut(),
         color: Colors.red,
@@ -60,7 +59,9 @@ class MyPostsWidget extends StatelessWidget {
 
   Future filePicker(BuildContext context, RkeUser rkeUser) async {
     try {
-      File file = await FilePicker.getFile();
+      final result = await FilePicker.platform.pickFiles(type: FileType.image);
+      if (result == null || result.files.single.path == null) return;
+      final file = File(result.files.single.path!);
       String fileUrl =
           await _uploadFile(file, p.basename(file.path), rkeUser.uid);
       String uploadStatus = "Failed to upload file !";
@@ -68,37 +69,36 @@ class MyPostsWidget extends StatelessWidget {
         uploadStatus = "File uploaded successfully !";
       }
       final snackBar = SnackBar(content: Text(uploadStatus));
-      Scaffold.of(context).showSnackBar(snackBar);
+      ScaffoldMessenger.of(context).showSnackBar(snackBar);
     } catch (e) {
       print(e);
       final snackBar = SnackBar(content: Text("Something went wrong :("));
-      Scaffold.of(context).showSnackBar(snackBar);
+      ScaffoldMessenger.of(context).showSnackBar(snackBar);
     }
   }
 
   Future<String> _uploadFile(File file, String filename, String uid) async {
-    final FirebaseStorage _storage =
-        FirebaseStorage(storageBucket: 'gs://myrke-189201.appspot.com');
-    StorageReference storageReference =
-        _storage.ref().child("users/$uid/$filename");
-    Img.Image imageTemp = Img.decodeImage(file.readAsBytesSync());
-    Img.Image resizedImg = Img.copyResize(imageTemp, height: 768);
+    final FirebaseStorage storage = FirebaseStorage.instanceFor(bucket: 'gs://myrke-189201.appspot.com');
+    final Reference storageReference =
+        storage.ref().child("users/$uid/$filename");
+    final Img.Image? imageTemp = Img.decodeImage(file.readAsBytesSync());
+    if (imageTemp == null) return "";
+    final Img.Image resizedImg = Img.copyResize(imageTemp, height: 768);
     var compressedImage = new File(file.path)
       ..writeAsBytesSync(Img.encodeJpg(resizedImg, quality: 85));
-    final StorageUploadTask uploadTask =
-        storageReference.putFile(compressedImage);
-    final StorageTaskSnapshot downloadUrl = (await uploadTask.onComplete);
-    final String url = (await downloadUrl.ref.getDownloadURL());
+    final UploadTask uploadTask = storageReference.putFile(compressedImage);
+    final TaskSnapshot snapshot = await uploadTask.whenComplete(() {});
+    final String url = await snapshot.ref.getDownloadURL();
     await updateFileDbEntry(
-        uid, filename, downloadUrl.ref.hashCode, downloadUrl.ref.path);
+        uid, filename, snapshot.ref.hashCode, snapshot.ref.fullPath);
     print("URL is $url");
     return url;
   }
 
   updateFileDbEntry(
       String uid, String filename, int hashCode, String path) async {
-    FirebaseDatabase.instance
-        .reference()
+    final db = FirebaseDatabase.instance.ref();
+    await db
         .child('album')
         .child(uid)
         .child(hashCode.toString())

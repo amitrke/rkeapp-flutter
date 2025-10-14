@@ -9,14 +9,12 @@ class HomeWidget extends StatelessWidget {
 
     List<Widget> list = [];
 
-    if (albumData != null) {
-      print(albumData);
-      for (final img in albumData.images) {
-        list.add(Image.network(
-          img.url,
-          height: 240.0,
-        ));
-      }
+    print(albumData);
+    for (final img in albumData.images) {
+      list.add(Image.network(
+        img.url,
+        height: 240.0,
+      ));
     }
 
     return Scaffold(
