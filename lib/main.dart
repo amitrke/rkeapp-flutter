@@ -1,39 +1,48 @@
-import 'package:RkeApp/home.dart';
-import 'package:RkeApp/models.dart';
-import 'package:RkeApp/myposts.dart';
-import 'package:RkeApp/posts.dart';
-import 'package:firebase_storage/firebase_storage.dart';
+import 'home.dart';
+import 'models.dart';
+import 'myposts.dart';
+import 'posts.dart';
+import 'package:firebase_core/firebase_core.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'auth.dart';
-import 'package:firebase_core/firebase_core.dart';
 import 'dart:async';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
-  final FirebaseApp app = await Firebase.initializeApp();
-  final FirebaseStorage storage =
-      FirebaseStorage(app: app, storageBucket: 'gs://myrke-189201.appspot.com');
+  final FirebaseApp _ = kIsWeb
+      ? await Firebase.initializeApp(
+          options: const FirebaseOptions(
+            apiKey: 'AIzaSyAmDbGMOQoxr8LT_RP1O2DJqbHD40dj1Kg',
+            appId: '1:473096260334:web:bc48f4e8eafe7c02a1c1ff',
+            messagingSenderId: '473096260334',
+            projectId: 'rkeorg',
+            authDomain: 'rkeorg.firebaseapp.com',
+            databaseURL: 'https://rkeorg-default-rtdb.firebaseio.com',
+            storageBucket: 'rkeorg.appspot.com',
+          ),
+        )
+      : await Firebase.initializeApp();
   runApp(MultiProvider(providers: [
     ChangeNotifierProvider<RkeUser>.value(value: authService.rkeUser),
-    ChangeNotifierProvider<AlbumData>.value(value: postService.album)
-  ], child: MyApp(storage: storage)));
+    ChangeNotifierProvider<AppData>.value(value: appDataService.appData),
+  ], child: const MyApp()));
 }
 
 class MyApp extends StatelessWidget {
-  final FirebaseStorage storage;
-  MyApp({this.storage});
+  const MyApp({super.key});
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
-      title: 'RkeApp Login',
-      home: MyStatefulWidget(),
+      title: 'RkeApp',
+      home: const MyStatefulWidget(),
     );
   }
 }
 
 class MyStatefulWidget extends StatefulWidget {
-  MyStatefulWidget({Key key}) : super(key: key);
+  const MyStatefulWidget({super.key});
 
   @override
   _MyStatefulWidgetState createState() => _MyStatefulWidgetState();
@@ -41,22 +50,6 @@ class MyStatefulWidget extends StatefulWidget {
 
 class _MyStatefulWidgetState extends State<MyStatefulWidget> {
   int _selectedIndex = 0;
-  static const TextStyle optionStyle =
-      TextStyle(fontSize: 30, fontWeight: FontWeight.bold);
-  static const List<Widget> _widgetOptions = <Widget>[
-    Text(
-      'Index 0: Home',
-      style: optionStyle,
-    ),
-    Text(
-      'Index 1: Business',
-      style: optionStyle,
-    ),
-    Text(
-      'Index 2: School',
-      style: optionStyle,
-    ),
-  ];
 
   void _onItemTapped(int index) {
     setState(() {
@@ -64,13 +57,11 @@ class _MyStatefulWidgetState extends State<MyStatefulWidget> {
     });
   }
 
-  navigate(int index) {
+  Widget navigate(int index) {
     if (index == 0) {
-      return HomeWidget();
-    } else if (index == 1) {
-      return MyPostsWidget();
+      return const HomeWidget();
     } else {
-      return _widgetOptions.elementAt(_selectedIndex);
+      return MyPostsWidget();
     }
   }
 
@@ -86,8 +77,8 @@ class _MyStatefulWidgetState extends State<MyStatefulWidget> {
             backgroundColor: Colors.indigo,
             child: CircleAvatar(
               radius: 22,
-              backgroundImage: NetworkImage(
-                  Provider.of<RkeUser>(context, listen: true).photoURL),
+        backgroundImage: NetworkImage(
+          Provider.of<RkeUser>(context, listen: true).photoURL),
             ),
           )
         ],
@@ -99,19 +90,19 @@ class _MyStatefulWidgetState extends State<MyStatefulWidget> {
         items: const <BottomNavigationBarItem>[
           BottomNavigationBarItem(
             icon: Icon(Icons.home),
-            title: Text('Home'),
+            label: 'Home',
           ),
           BottomNavigationBarItem(
             icon: Icon(Icons.account_box),
-            title: Text('MyPosts'),
+            label: 'MyPosts',
           ),
           BottomNavigationBarItem(
             icon: Icon(Icons.child_friendly),
-            title: Text('LocalAds'),
+            label: 'LocalAds',
           ),
         ],
         currentIndex: _selectedIndex,
-        selectedItemColor: Colors.amber[800],
+        selectedItemColor: Colors.amber,
         onTap: _onItemTapped,
       ),
     );

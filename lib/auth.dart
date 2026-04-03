@@ -1,60 +1,114 @@
-import 'package:RkeApp/models.dart';
+import 'models.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:google_sign_in/google_sign_in.dart';
 import 'package:firebase_database/firebase_database.dart';
+import 'package:flutter/foundation.dart';
 import 'package:rxdart/rxdart.dart';
 
 class AuthService {
-  final GoogleSignIn _googleSignIn = GoogleSignIn();
   final FirebaseAuth _auth = FirebaseAuth.instance;
 
-  Stream<User> user; // firebase user
-  PublishSubject loading = PublishSubject();
-  Stream<RkeUser> rkeUserStream;
-  RkeUser rkeUser;
+  late final Stream<User?> user; // firebase user
+  final PublishSubject<bool> loading = PublishSubject<bool>();
+  Stream<RkeUser>? rkeUserStream;
+  late RkeUser rkeUser;
+  bool _initialized = false;
 
   // constructor
   AuthService() {
     user = _auth.authStateChanges();
-    rkeUser = new RkeUser();
+    rkeUser = RkeUser();
     user.listen((event) {
       rkeUser.changeUser(event);
     });
   }
 
-  Future<User> googleSignIn() async {
+  Future<void> _initializeGoogleSignIn() async {
+    if (!_initialized && !kIsWeb) {
+      await GoogleSignIn.instance.initialize(
+        clientId: null,
+      );
+      _initialized = true;
+    }
+  }
+
+  Future<User?> googleSignIn() async {
     try {
       loading.add(true);
-      GoogleSignInAccount googleSignInAccount = await _googleSignIn.signIn();
-      GoogleSignInAuthentication googleAuth =
-          await googleSignInAccount.authentication;
 
-      final AuthCredential credential = GoogleAuthProvider.credential(
-        accessToken: googleAuth.accessToken,
-        idToken: googleAuth.idToken,
-      );
+      if (kIsWeb) {
+        final UserCredential userCredential =
+            await _auth.signInWithPopup(GoogleAuthProvider());
+        final User? webUser = userCredential.user;
+        if (webUser != null) {
+          updateUserData(webUser);
+          // ignore: avoid_print
+          print("user name: ${webUser.displayName}");
+        }
+        loading.add(false);
+        return webUser;
+      }
 
-      UserCredential userCredential =
-          await _auth.signInWithCredential(credential);
+      // Initialize Google Sign In
+      await _initializeGoogleSignIn();
 
-      updateUserData(userCredential.user);
-      print("user name: ${userCredential.user.displayName}");
+      // Check if platform supports authenticate
+      if (GoogleSignIn.instance.supportsAuthenticate()) {
+        // Attempt authentication
+        final GoogleSignInAccount? googleUser = await GoogleSignIn.instance.authenticate();
 
-      loading.add(false);
-      return userCredential.user;
+        if (googleUser == null) {
+          loading.add(false);
+          return null; // user cancelled
+        }
+
+        // Get authentication details
+        final GoogleSignInAuthentication googleAuth = await googleUser.authentication;
+        final GoogleSignInClientAuthorization? googleAccess = await googleUser
+            .authorizationClient
+            .authorizationForScopes(<String>['email', 'profile']);
+
+        if (googleAuth.idToken == null) {
+          loading.add(false);
+          return null;
+        }
+
+        // Create a new credential for Firebase
+        final credential = GoogleAuthProvider.credential(
+          accessToken: googleAccess?.accessToken,
+          idToken: googleAuth.idToken,
+        );
+
+        // Sign in to Firebase
+        UserCredential userCredential = await _auth.signInWithCredential(credential);
+
+        final user = userCredential.user;
+        if (user != null) {
+          updateUserData(user);
+          // ignore: avoid_print
+          print("user name: ${user.displayName}");
+        }
+
+        loading.add(false);
+        return user;
+      } else {
+        // This platform requires an alternative sign-in UI integration.
+        loading.add(false);
+        return null;
+      }
     } catch (error) {
-      return error;
+      // ignore: avoid_print
+      print(error);
+      loading.add(false);
+      return null;
     }
   }
 
   void updateUserData(User user) async {
-    var existing = await FirebaseDatabase.instance
-        .reference()
-        .child('users')
-        .child(user.uid)
-        .once();
-    print(existing);
-    FirebaseDatabase.instance.reference().child('users').child(user.uid).set({
+    final db = FirebaseDatabase.instance.ref();
+    final userRef = db.child('users').child(user.uid);
+    await userRef.get();
+    await userRef.set({
       'name': user.displayName,
       'email': user.email,
       'photoURL': user.photoURL,
@@ -65,6 +119,7 @@ class AuthService {
   Future<String> signOut() async {
     try {
       await _auth.signOut();
+      await GoogleSignIn.instance.signOut();
       return 'SignOut';
     } catch (e) {
       return e.toString();

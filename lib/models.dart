@@ -7,24 +7,23 @@ class RkeUser with ChangeNotifier {
   String photoURL = "";
   String email = "";
 
-  RkeUser() {
-    this.uid = "";
-    this.name = "";
-    this.photoURL = "https://img.icons8.com/color/96/000000/user.png";
-    this.email = "";
-  }
+  RkeUser()
+      : uid = "",
+        name = "",
+        photoURL = "https://img.icons8.com/color/96/000000/user.png",
+        email = "";
 
-  void changeUser(User user) {
+  void changeUser(User? user) {
     if (user != null) {
-      this.uid = user.uid ?? '';
-      this.name = user.displayName ?? '';
-      this.photoURL = user.photoURL ?? '';
-      this.email = user.email ?? '';
+      uid = user.uid;
+      name = user.displayName ?? '';
+      photoURL = user.photoURL ?? '';
+      email = user.email ?? '';
     } else {
-      this.uid = "";
-      this.name = "";
-      this.photoURL = "https://img.icons8.com/color/96/000000/user.png";
-      this.email = "";
+      uid = "";
+      name = "";
+      photoURL = "https://img.icons8.com/color/96/000000/user.png";
+      email = "";
     }
     notifyListeners();
   }
@@ -40,10 +39,11 @@ class AlbumItem {
 }
 
 class AlbumData with ChangeNotifier {
-  List<AlbumItem> images;
+  List<AlbumItem> images = <AlbumItem>[];
 
-  AlbumData() {
-    images = new List();
+  void reset() {
+    images = <AlbumItem>[];
+    notifyListeners();
   }
 
   void addImage(AlbumItem item) {
@@ -53,13 +53,106 @@ class AlbumData with ChangeNotifier {
 }
 
 class UserData with ChangeNotifier {
-  String url;
+  String url = "";
 
-  UserData() {
-    this.url = "";
-  }
+  UserData();
 
   void changeUserData() {
     this.url = "";
+  }
+}
+
+// ---------- Home screen data models ----------
+
+class Post {
+  final String id;
+  final String title;
+  final String intro;
+  final String category;
+  final String imageUrl;
+  final String userId;
+  final String authorName;
+  final int updateDate;
+
+  Post({
+    required this.id,
+    required this.title,
+    required this.intro,
+    required this.category,
+    required this.imageUrl,
+    required this.userId,
+    required this.authorName,
+    required this.updateDate,
+  });
+}
+
+class NewsItem {
+  final String id;
+  final String title;
+  final String description;
+  final String imageUrl;
+  final String url;
+  final int createdAt;
+
+  NewsItem({
+    required this.id,
+    required this.title,
+    required this.description,
+    required this.imageUrl,
+    required this.url,
+    required this.createdAt,
+  });
+}
+
+class AppEvent {
+  final String id;
+  final String name;
+  final String description;
+  final String date;
+
+  AppEvent({
+    required this.id,
+    required this.name,
+    required this.description,
+    required this.date,
+  });
+
+  String get formattedMonth {
+    try {
+      const months = ['JAN', 'FEB', 'MAR', 'APR', 'MAY', 'JUN', 'JUL', 'AUG', 'SEP', 'OCT', 'NOV', 'DEC'];
+      return months[DateTime.parse(date).month - 1];
+    } catch (_) {
+      return '?';
+    }
+  }
+
+  String get formattedDay {
+    try {
+      return DateTime.parse(date).day.toString().padLeft(2, '0');
+    } catch (_) {
+      return '?';
+    }
+  }
+}
+
+class WeatherDay {
+  final double temp;
+  final String condition;
+  final String icon;
+
+  WeatherDay({required this.temp, required this.condition, required this.icon});
+}
+
+class AppData with ChangeNotifier {
+  List<Post> posts = [];
+  List<NewsItem> news = [];
+  List<AppEvent> events = [];
+  WeatherDay? todayWeather;
+  WeatherDay? tomorrowWeather;
+  bool loading = true;
+
+  void setLoaded() {
+    loading = false;
+    notifyListeners();
   }
 }

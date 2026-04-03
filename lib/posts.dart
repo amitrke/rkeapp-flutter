@@ -1,30 +1,204 @@
-import 'package:RkeApp/models.dart';
-import 'package:firebase_database/firebase_database.dart';
+import 'models.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_storage/firebase_storage.dart';
 
-class PostsService {
-  AlbumData album;
+/// Converts a raw filename stored in Firestore (e.g. "photo.jpg") into the
+/// medium-size Firebase Storage path used by the web app.
+String _storagePath(String userId, String filename) {
+  final lastDot = filename.lastIndexOf('.');
+  final base = lastDot != -1 ? filename.substring(0, lastDot) : filename;
+  final ext = lastDot != -1 ? filename.substring(lastDot + 1) : '';
+  return 'users/$userId/images/${base}_680x680.$ext';
+}
 
-  PostsService() {
-    album = new AlbumData();
-    this.syncAlbum();
+/// Returns a download URL for the image. Accepts either an existing https URL
+/// or a raw filename that needs to be resolved via Firebase Storage.
+Future<String> _resolveImage(String userId, String filename) async {
+  if (filename.startsWith('http')) return filename;
+  try {
+    return await FirebaseStorage.instance
+        .ref(_storagePath(userId, filename))
+        .getDownloadURL();
+  } catch (_) {
+    return '';
+  }
+}
+
+class AppDataService {
+  final AppData appData = AppData();
+
+  AppDataService() {
+    _loadAll();
   }
 
-  syncAlbum() async {
-    final snapshot =
-        await FirebaseDatabase.instance.reference().child('album').once();
-    List uids = snapshot.value.keys.toList();
-    for (final uid in uids) {
-      List hCodes = snapshot.value[uid].keys.toList();
-      for (final hCode in hCodes) {
-        var imgObj = snapshot.value[uid][hCode];
-        final ref = FirebaseStorage.instance.ref().child(imgObj['path']);
-        var url = await ref.getDownloadURL();
-        postService.album
-            .addImage(new AlbumItem(imgObj['path'], hCode, uid, url));
+  Future<void> _loadAll() async {
+    await Future.wait([
+      _loadPosts(),
+      _loadNews(),
+      _loadEvents(),
+      _loadWeather(),
+    ]);
+    appData.setLoaded();
+  }
+
+  Future<void> _loadPosts() async {
+    try {
+      // ignore: avoid_print
+      print('[AppData] _loadPosts: querying...');
+      final snap = await FirebaseFirestore.instance
+          .collection('posts')
+          .where('public', isEqualTo: true)
+          .where('approved', isEqualTo: true)
+          .orderBy('updateDate', descending: true)
+          .limit(4)
+          .get();
+      // ignore: avoid_print
+      print('[AppData] _loadPosts: got ${snap.docs.length} docs');
+
+      final List<Post> posts = [];
+      for (final doc in snap.docs) {
+        final d = doc.data();
+        final userId = d['userId'] as String? ?? '';
+        final rawImages = List<String>.from(d['images'] as List? ?? []);
+
+        String imageUrl = '';
+        if (rawImages.isNotEmpty) {
+          imageUrl = await _resolveImage(userId, rawImages[0]);
+        }
+
+        String authorName = 'Community Member';
+        try {
+          final uSnap = await FirebaseFirestore.instance
+              .collection('users')
+              .where('id', isEqualTo: userId)
+              .limit(1)
+              .get();
+          if (uSnap.docs.isNotEmpty) {
+            authorName =
+                uSnap.docs.first.data()['name'] as String? ?? authorName;
+          }
+        } catch (_) {}
+
+        posts.add(Post(
+          id: doc.id,
+          title: d['title'] as String? ?? '',
+          intro: d['intro'] as String? ?? '',
+          category: d['category'] as String? ?? '',
+          imageUrl: imageUrl,
+          userId: userId,
+          authorName: authorName,
+          updateDate: d['updateDate'] as int? ?? 0,
+        ));
       }
+      appData.posts = posts;
+    } catch (e, st) {
+      // ignore: avoid_print
+      print('[AppData] _loadPosts ERROR: $e\n$st');
+    }
+  }
+
+  Future<void> _loadNews() async {
+    try {
+      // ignore: avoid_print
+      print('[AppData] _loadNews: querying...');
+      final snap = await FirebaseFirestore.instance
+          .collection('news')
+          .orderBy('expireAt', descending: true)
+          .limit(4)
+          .get();
+      // ignore: avoid_print
+      print('[AppData] _loadNews: got ${snap.docs.length} docs');
+
+      appData.news = snap.docs.map((doc) {
+        final d = doc.data();
+        return NewsItem(
+          id: doc.id,
+          title: d['title'] as String? ?? '',
+          description: d['description'] as String? ?? '',
+          imageUrl: (d['image_url'] as String?) ?? (d['imageUrl'] as String?) ?? '',
+          url: d['url'] as String? ?? d['link'] as String? ?? '',
+          createdAt: (d['createdAt'] as int?) ??
+              DateTime.tryParse(d['publishedAt'] as String? ?? '')
+                      ?.millisecondsSinceEpoch ??
+              0,
+        );
+      }).toList();
+    } catch (e, st) {
+      // ignore: avoid_print
+      print('[AppData] _loadNews ERROR: $e\n$st');
+    }
+  }
+
+  Future<void> _loadEvents() async {
+    try {
+      final today = DateTime.now().toIso8601String().split('T')[0];
+      // ignore: avoid_print
+      print('[AppData] _loadEvents: querying (today=$today)...');
+      final snap = await FirebaseFirestore.instance
+          .collection('events')
+          .where('date', isGreaterThanOrEqualTo: today)
+          .orderBy('date')
+          .limit(4)
+          .get();
+      // ignore: avoid_print
+      print('[AppData] _loadEvents: got ${snap.docs.length} docs');
+
+      appData.events = snap.docs.map((doc) {
+        final d = doc.data();
+        return AppEvent(
+          id: doc.id,
+          name: d['name'] as String? ?? '',
+          description: d['description'] as String? ?? '',
+          date: d['date'] as String? ?? '',
+        );
+      }).toList();
+    } catch (e, st) {
+      // ignore: avoid_print
+      print('[AppData] _loadEvents ERROR: $e\n$st');
+    }
+  }
+
+  Future<void> _loadWeather() async {
+    try {
+      // ignore: avoid_print
+      print('[AppData] _loadWeather: querying...');
+      final doc = await FirebaseFirestore.instance
+          .doc('weather/roorkee-in')
+          .get();
+      // ignore: avoid_print
+      print('[AppData] _loadWeather: exists=${doc.exists}');
+      if (!doc.exists) return;
+      final data = doc.data()!;
+
+      final current = data['current'] as Map<String, dynamic>?;
+      if (current != null) {
+        final cw =
+            (current['weather'] as List?)?.first as Map<String, dynamic>?;
+        appData.todayWeather = WeatherDay(
+          temp: (current['temp'] as num?)?.toDouble() ?? 0.0,
+          condition: cw?['main'] as String? ?? '',
+          icon: cw?['icon'] as String? ?? '',
+        );
+      }
+
+      final daily = data['daily'] as List<dynamic>?;
+      if (daily != null && daily.length > 1) {
+        final tomorrow = daily[1] as Map<String, dynamic>;
+        final tTemp =
+            (tomorrow['temp'] as Map<String, dynamic>?)?['day'] as num?;
+        final tw =
+            (tomorrow['weather'] as List?)?.first as Map<String, dynamic>?;
+        appData.tomorrowWeather = WeatherDay(
+          temp: tTemp?.toDouble() ?? 0.0,
+          condition: tw?['main'] as String? ?? '',
+          icon: tw?['icon'] as String? ?? '',
+        );
+      }
+    } catch (e, st) {
+      // ignore: avoid_print
+      print('[AppData] _loadWeather ERROR: $e\n$st');
     }
   }
 }
 
-final PostsService postService = PostsService();
+final AppDataService appDataService = AppDataService();
