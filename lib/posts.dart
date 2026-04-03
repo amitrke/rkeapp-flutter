@@ -103,7 +103,7 @@ class AppDataService {
       print('[AppData] _loadNews: querying...');
       final snap = await FirebaseFirestore.instance
           .collection('news')
-          .orderBy('createdAt', descending: true)
+          .orderBy('expireAt', descending: true)
           .limit(4)
           .get();
       // ignore: avoid_print
@@ -115,9 +115,12 @@ class AppDataService {
           id: doc.id,
           title: d['title'] as String? ?? '',
           description: d['description'] as String? ?? '',
-          imageUrl: d['image_url'] as String? ?? '',
+          imageUrl: (d['image_url'] as String?) ?? (d['imageUrl'] as String?) ?? '',
           url: d['url'] as String? ?? d['link'] as String? ?? '',
-          createdAt: d['createdAt'] as int? ?? 0,
+          createdAt: (d['createdAt'] as int?) ??
+              DateTime.tryParse(d['publishedAt'] as String? ?? '')
+                      ?.millisecondsSinceEpoch ??
+              0,
         );
       }).toList();
     } catch (e, st) {
@@ -128,13 +131,13 @@ class AppDataService {
 
   Future<void> _loadEvents() async {
     try {
-      final now = DateTime.now().millisecondsSinceEpoch;
+      final today = DateTime.now().toIso8601String().split('T')[0];
       // ignore: avoid_print
-      print('[AppData] _loadEvents: querying (now=$now)...');
+      print('[AppData] _loadEvents: querying (today=$today)...');
       final snap = await FirebaseFirestore.instance
           .collection('events')
-          .where('expireAt', isGreaterThan: now)
-          .orderBy('expireAt')
+          .where('date', isGreaterThanOrEqualTo: today)
+          .orderBy('date')
           .limit(4)
           .get();
       // ignore: avoid_print
