@@ -77,7 +77,8 @@ class MyPostsWidget extends StatelessWidget {
   }
 
   Future<String> _uploadFile(File file, String filename, String uid) async {
-    final FirebaseStorage storage = FirebaseStorage.instanceFor(bucket: 'gs://myrke-189201.appspot.com');
+    final FirebaseStorage storage =
+      FirebaseStorage.instanceFor(bucket: 'gs://rkeorg.appspot.com');
     final Reference storageReference =
         storage.ref().child("users/$uid/$filename");
     final Img.Image? imageTemp = Img.decodeImage(file.readAsBytesSync());

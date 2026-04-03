@@ -14,13 +14,13 @@ Future<void> main() async {
   final FirebaseApp _ = kIsWeb
       ? await Firebase.initializeApp(
           options: const FirebaseOptions(
-            apiKey: 'AIzaSyDK72pOl-TSRFj2HUMyo9oP5ZEftGd-Afc',
-            appId: '1:670134176077:android:c028bf9a3c512b75558f04',
-            messagingSenderId: '670134176077',
-            projectId: 'myrke-189201',
-            authDomain: 'myrke-189201.firebaseapp.com',
-            databaseURL: 'https://myrke-189201.firebaseio.com',
-            storageBucket: 'myrke-189201.appspot.com',
+            apiKey: 'AIzaSyAmDbGMOQoxr8LT_RP1O2DJqbHD40dj1Kg',
+            appId: '1:473096260334:web:bc48f4e8eafe7c02a1c1ff',
+            messagingSenderId: '473096260334',
+            projectId: 'rkeorg',
+            authDomain: 'rkeorg.firebaseapp.com',
+            databaseURL: 'https://rkeorg-default-rtdb.firebaseio.com',
+            storageBucket: 'rkeorg.appspot.com',
           ),
         )
       : await Firebase.initializeApp();
