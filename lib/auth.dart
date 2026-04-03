@@ -2,16 +2,17 @@ import 'models.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:google_sign_in/google_sign_in.dart';
 import 'package:firebase_database/firebase_database.dart';
+import 'package:flutter/foundation.dart';
 import 'package:rxdart/rxdart.dart';
 
 class AuthService {
-  final GoogleSignIn _googleSignIn = GoogleSignIn();
   final FirebaseAuth _auth = FirebaseAuth.instance;
 
   late final Stream<User?> user; // firebase user
   final PublishSubject<bool> loading = PublishSubject<bool>();
   Stream<RkeUser>? rkeUserStream;
   late RkeUser rkeUser;
+  bool _initialized = false;
 
   // constructor
   AuthService() {
@@ -22,34 +23,79 @@ class AuthService {
     });
   }
 
+  Future<void> _initializeGoogleSignIn() async {
+    if (!_initialized && !kIsWeb) {
+      await GoogleSignIn.instance.initialize(
+        clientId: null,
+      );
+      _initialized = true;
+    }
+  }
+
   Future<User?> googleSignIn() async {
     try {
       loading.add(true);
-      final GoogleSignInAccount? googleSignInAccount = await _googleSignIn.signIn();
-      if (googleSignInAccount == null) {
+
+      if (kIsWeb) {
+        final UserCredential userCredential =
+            await _auth.signInWithPopup(GoogleAuthProvider());
+        final User? webUser = userCredential.user;
+        if (webUser != null) {
+          updateUserData(webUser);
+          // ignore: avoid_print
+          print("user name: ${webUser.displayName}");
+        }
         loading.add(false);
-        return null; // user cancelled
-      }
-      final GoogleSignInAuthentication googleAuth =
-          await googleSignInAccount.authentication;
-
-      final AuthCredential credential = GoogleAuthProvider.credential(
-        accessToken: googleAuth.accessToken,
-        idToken: googleAuth.idToken,
-      );
-
-      UserCredential userCredential =
-          await _auth.signInWithCredential(credential);
-
-      final user = userCredential.user;
-      if (user != null) {
-        updateUserData(user);
-        // ignore: avoid_print
-        print("user name: ${user.displayName}");
+        return webUser;
       }
 
-      loading.add(false);
-      return user;
+      // Initialize Google Sign In
+      await _initializeGoogleSignIn();
+
+      // Check if platform supports authenticate
+      if (GoogleSignIn.instance.supportsAuthenticate()) {
+        // Attempt authentication
+        final GoogleSignInAccount? googleUser = await GoogleSignIn.instance.authenticate();
+
+        if (googleUser == null) {
+          loading.add(false);
+          return null; // user cancelled
+        }
+
+        // Get authentication details
+        final GoogleSignInAuthentication googleAuth = await googleUser.authentication;
+        final GoogleSignInClientAuthorization? googleAccess = await googleUser
+            .authorizationClient
+            .authorizationForScopes(<String>['email', 'profile']);
+
+        if (googleAuth.idToken == null) {
+          loading.add(false);
+          return null;
+        }
+
+        // Create a new credential for Firebase
+        final credential = GoogleAuthProvider.credential(
+          accessToken: googleAccess?.accessToken,
+          idToken: googleAuth.idToken,
+        );
+
+        // Sign in to Firebase
+        UserCredential userCredential = await _auth.signInWithCredential(credential);
+
+        final user = userCredential.user;
+        if (user != null) {
+          updateUserData(user);
+          // ignore: avoid_print
+          print("user name: ${user.displayName}");
+        }
+
+        loading.add(false);
+        return user;
+      } else {
+        // This platform requires an alternative sign-in UI integration.
+        loading.add(false);
+        return null;
+      }
     } catch (error) {
       // ignore: avoid_print
       print(error);
@@ -61,9 +107,7 @@ class AuthService {
   void updateUserData(User user) async {
     final db = FirebaseDatabase.instance.ref();
     final userRef = db.child('users').child(user.uid);
-    final existing = await userRef.get();
-    // ignore: avoid_print
-    print(existing);
+    await userRef.get();
     await userRef.set({
       'name': user.displayName,
       'email': user.email,
@@ -75,6 +119,7 @@ class AuthService {
   Future<String> signOut() async {
     try {
       await _auth.signOut();
+      await GoogleSignIn.instance.signOut();
       return 'SignOut';
     } catch (e) {
       return e.toString();

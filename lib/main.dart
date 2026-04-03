@@ -3,7 +3,7 @@ import 'models.dart';
 import 'myposts.dart';
 import 'posts.dart';
 import 'package:firebase_core/firebase_core.dart';
-import 'package:firebase_storage/firebase_storage.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'auth.dart';
@@ -11,23 +11,32 @@ import 'dart:async';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
-  final FirebaseApp app = await Firebase.initializeApp();
-  final FirebaseStorage storage =
-      FirebaseStorage.instanceFor(app: app, bucket: 'gs://myrke-189201.appspot.com');
+  final FirebaseApp _ = kIsWeb
+      ? await Firebase.initializeApp(
+          options: const FirebaseOptions(
+            apiKey: 'AIzaSyDK72pOl-TSRFj2HUMyo9oP5ZEftGd-Afc',
+            appId: '1:670134176077:android:c028bf9a3c512b75558f04',
+            messagingSenderId: '670134176077',
+            projectId: 'myrke-189201',
+            authDomain: 'myrke-189201.firebaseapp.com',
+            databaseURL: 'https://myrke-189201.firebaseio.com',
+            storageBucket: 'myrke-189201.appspot.com',
+          ),
+        )
+      : await Firebase.initializeApp();
   runApp(MultiProvider(providers: [
     ChangeNotifierProvider<RkeUser>.value(value: authService.rkeUser),
-    ChangeNotifierProvider<AlbumData>.value(value: postService.album)
-  ], child: MyApp(storage: storage)));
+    ChangeNotifierProvider<AppData>.value(value: appDataService.appData),
+  ], child: const MyApp()));
 }
 
 class MyApp extends StatelessWidget {
-  final FirebaseStorage storage;
-  const MyApp({super.key, required this.storage});
+  const MyApp({super.key});
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
-      title: 'RkeApp Login',
-      home: MyStatefulWidget(),
+      title: 'RkeApp',
+      home: const MyStatefulWidget(),
     );
   }
 }
@@ -41,22 +50,6 @@ class MyStatefulWidget extends StatefulWidget {
 
 class _MyStatefulWidgetState extends State<MyStatefulWidget> {
   int _selectedIndex = 0;
-  static const TextStyle optionStyle =
-      TextStyle(fontSize: 30, fontWeight: FontWeight.bold);
-  static const List<Widget> _widgetOptions = <Widget>[
-    Text(
-      'Index 0: Home',
-      style: optionStyle,
-    ),
-    Text(
-      'Index 1: Business',
-      style: optionStyle,
-    ),
-    Text(
-      'Index 2: School',
-      style: optionStyle,
-    ),
-  ];
 
   void _onItemTapped(int index) {
     setState(() {
@@ -64,13 +57,11 @@ class _MyStatefulWidgetState extends State<MyStatefulWidget> {
     });
   }
 
-  navigate(int index) {
+  Widget navigate(int index) {
     if (index == 0) {
-      return HomeWidget();
-    } else if (index == 1) {
-      return MyPostsWidget();
+      return const HomeWidget();
     } else {
-      return _widgetOptions.elementAt(_selectedIndex);
+      return MyPostsWidget();
     }
   }
 

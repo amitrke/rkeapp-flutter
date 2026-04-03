@@ -2,7 +2,6 @@ import 'dart:io';
 
 import 'auth.dart';
 import 'models.dart';
-import 'posts.dart';
 import 'package:file_picker/file_picker.dart';
 import 'package:firebase_database/firebase_database.dart';
 import 'package:firebase_storage/firebase_storage.dart';
@@ -103,6 +102,5 @@ class MyPostsWidget extends StatelessWidget {
         .child(uid)
         .child(hashCode.toString())
         .set({'path': path, 'filename': filename});
-    await postService.syncAlbum();
   }
 }
