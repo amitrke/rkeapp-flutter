@@ -26,7 +26,7 @@ def flutterVersionName = localProperties.getProperty('flutter.versionName') ?: '
 
 android {
     namespace "org.roorkee.RkeApp"
-    compileSdk 34
+    compileSdk 36
 
     sourceSets {
         main.java.srcDirs += 'src/main/kotlin'
@@ -37,9 +37,9 @@ android {
     }
 
     defaultConfig {
-        applicationId "org.roorkee.rkeapp"
-        minSdkVersion 23
-        targetSdkVersion 34
+        applicationId "org.roorkee"
+        minSdkVersion flutter.minSdkVersion
+        targetSdkVersion 36
         versionCode flutterVersionCode.toInteger()
         versionName flutterVersionName
         multiDexEnabled true
