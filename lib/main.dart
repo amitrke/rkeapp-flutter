@@ -2,6 +2,7 @@ import 'home.dart';
 import 'models.dart';
 import 'myposts.dart';
 import 'posts.dart';
+import 'package:firebase_app_check/firebase_app_check.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
@@ -24,6 +25,20 @@ Future<void> main() async {
           ),
         )
       : await Firebase.initializeApp();
+
+  if (!kIsWeb) {
+    await FirebaseAppCheck.instance.activate(
+      providerAndroid:
+          kReleaseMode
+              ? const AndroidPlayIntegrityProvider()
+              : const AndroidDebugProvider(),
+      providerApple:
+          kReleaseMode
+              ? const AppleDeviceCheckProvider()
+              : const AppleDebugProvider(),
+    );
+  }
+
   runApp(MultiProvider(providers: [
     ChangeNotifierProvider<RkeUser>.value(value: authService.rkeUser),
     ChangeNotifierProvider<AppData>.value(value: appDataService.appData),

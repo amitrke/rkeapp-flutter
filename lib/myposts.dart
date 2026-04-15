@@ -22,11 +22,13 @@ class MyPostsWidget extends StatelessWidget {
           loginLogoutButton(rkeUser)
         ],
       ),
-      floatingActionButton: FloatingActionButton(
-        onPressed: () => filePicker(context, rkeUser),
-        tooltip: 'Add Photo',
-        child: const Icon(Icons.add),
-      ),
+      floatingActionButton: rkeUser.uid != ""
+          ? FloatingActionButton(
+              onPressed: () => filePicker(context, rkeUser),
+              tooltip: 'Add Photo',
+              child: const Icon(Icons.add),
+            )
+          : null,
     );
   }
 
@@ -58,6 +60,12 @@ class MyPostsWidget extends StatelessWidget {
 
   Future filePicker(BuildContext context, RkeUser rkeUser) async {
     try {
+      if (rkeUser.uid == "") {
+        const snackBar = SnackBar(content: Text("Please login first"));
+        ScaffoldMessenger.of(context).showSnackBar(snackBar);
+        return;
+      }
+
       final result = await FilePicker.platform.pickFiles(type: FileType.image);
       if (result == null || result.files.single.path == null) return;
       final file = File(result.files.single.path!);

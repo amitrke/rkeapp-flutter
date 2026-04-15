@@ -15,6 +15,14 @@
       },
       "oauth_client": [
         {
+          "client_id": "473096260334-2bl7obubatt8prmt2llbsfjrbtpro1m5.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "org.roorkee",
+            "certificate_hash": "e17050c60e96c616ca5e6bc18cc29651c546a9d0"
+          }
+        },
+        {
           "client_id": "473096260334-752319v0jpfkajs4muj07ri12e6215g9.apps.googleusercontent.com",
           "client_type": 3
         }
