@@ -11,26 +11,26 @@ import 'package:path/path.dart' as p;
 import 'package:image/image.dart' as Img;
 
 class MyPostsWidget extends StatelessWidget {
+  const MyPostsWidget({super.key});
+
   @override
   Widget build(BuildContext context) {
     final rkeUser = Provider.of<RkeUser>(context); // gets the firebase user
 
-    return Scaffold(
-      body: Column(
+    return SingleChildScrollView(
+      padding: const EdgeInsets.all(20),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: <Widget>[
-          Container(padding: EdgeInsets.all(20), child: firstLine(rkeUser)),
+          firstLine(rkeUser),
+          const SizedBox(height: 12),
           loginLogoutButton(rkeUser)
         ],
-      ),
-      floatingActionButton: FloatingActionButton(
-        onPressed: () => filePicker(context, rkeUser),
-        tooltip: 'Add Photo',
-        child: const Icon(Icons.add),
       ),
     );
   }
 
-  firstLine(RkeUser user) {
+  Widget firstLine(RkeUser user) {
     if (user.uid != "") {
       return Text('Hi ${user.name}!');
     } else {
@@ -38,7 +38,7 @@ class MyPostsWidget extends StatelessWidget {
     }
   }
 
-  loginLogoutButton(RkeUser user) {
+  Widget loginLogoutButton(RkeUser user) {
     if (user.uid != "") {
       return MaterialButton(
         onPressed: () => authService.signOut(),
@@ -56,8 +56,14 @@ class MyPostsWidget extends StatelessWidget {
     }
   }
 
-  Future filePicker(BuildContext context, RkeUser rkeUser) async {
+  static Future<void> filePicker(BuildContext context, RkeUser rkeUser) async {
     try {
+      if (rkeUser.uid == "") {
+        const snackBar = SnackBar(content: Text("Please login first"));
+        ScaffoldMessenger.of(context).showSnackBar(snackBar);
+        return;
+      }
+
       final result = await FilePicker.platform.pickFiles(type: FileType.image);
       if (result == null || result.files.single.path == null) return;
       final file = File(result.files.single.path!);
@@ -76,7 +82,7 @@ class MyPostsWidget extends StatelessWidget {
     }
   }
 
-  Future<String> _uploadFile(File file, String filename, String uid) async {
+  static Future<String> _uploadFile(File file, String filename, String uid) async {
     final FirebaseStorage storage =
       FirebaseStorage.instanceFor(bucket: 'gs://rkeorg.appspot.com');
     final Reference storageReference =
@@ -95,7 +101,7 @@ class MyPostsWidget extends StatelessWidget {
     return url;
   }
 
-  updateFileDbEntry(
+  static Future<void> updateFileDbEntry(
       String uid, String filename, int hashCode, String path) async {
     final db = FirebaseDatabase.instance.ref();
     await db

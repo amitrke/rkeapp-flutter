@@ -7,6 +7,8 @@ import 'package:rxdart/rxdart.dart';
 
 class AuthService {
   final FirebaseAuth _auth = FirebaseAuth.instance;
+  static const String _googleServerClientId =
+      '473096260334-752319v0jpfkajs4muj07ri12e6215g9.apps.googleusercontent.com';
 
   late final Stream<User?> user; // firebase user
   final PublishSubject<bool> loading = PublishSubject<bool>();
@@ -26,7 +28,7 @@ class AuthService {
   Future<void> _initializeGoogleSignIn() async {
     if (!_initialized && !kIsWeb) {
       await GoogleSignIn.instance.initialize(
-        clientId: null,
+        serverClientId: _googleServerClientId,
       );
       _initialized = true;
     }
@@ -96,6 +98,11 @@ class AuthService {
         loading.add(false);
         return null;
       }
+    } on GoogleSignInException catch (error) {
+      // ignore: avoid_print
+      print('GoogleSignInException(${error.code}): ${error.description}');
+      loading.add(false);
+      return null;
     } catch (error) {
       // ignore: avoid_print
       print(error);

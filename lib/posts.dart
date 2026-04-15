@@ -36,6 +36,7 @@ class AppDataService {
       _loadPosts(),
       _loadNews(),
       _loadEvents(),
+      _loadAlbums(),
       _loadWeather(),
     ]);
     appData.setLoaded();
@@ -181,9 +182,9 @@ class AppDataService {
         );
       }
 
-      final daily = data['daily'] as List<dynamic>?;
-      if (daily != null && daily.length > 1) {
-        final tomorrow = daily[1] as Map<String, dynamic>;
+      final dailyForecasts = data['daily'] as List<dynamic>?;
+      if (dailyForecasts != null && dailyForecasts.length > 1) {
+        final tomorrow = dailyForecasts[1] as Map<String, dynamic>;
         final tTemp =
             (tomorrow['temp'] as Map<String, dynamic>?)?['day'] as num?;
         final tw =
@@ -194,9 +195,109 @@ class AppDataService {
           icon: tw?['icon'] as String? ?? '',
         );
       }
+
+      final timezone = data['timezone'] as String? ?? 'Asia/Kolkata';
+      final timezoneOffset = (data['timezone_offset'] as num?)?.toInt() ?? 0;
+
+      WeatherSummary _summaryFrom(dynamic weatherNode) {
+        final first = (weatherNode as List?)?.first as Map<String, dynamic>?;
+        return WeatherSummary(
+          main: first?['main'] as String? ?? '',
+          description: first?['description'] as String? ?? '',
+          icon: first?['icon'] as String? ?? '',
+        );
+      }
+
+      final currentRaw = data['current'] as Map<String, dynamic>?;
+      if (currentRaw == null) return;
+
+      final weatherCurrent = WeatherCurrent(
+        dt: (currentRaw['dt'] as num?)?.toInt() ?? 0,
+        temp: (currentRaw['temp'] as num?)?.toDouble() ?? 0.0,
+        humidity: (currentRaw['humidity'] as num?)?.toInt() ?? 0,
+        pressure: (currentRaw['pressure'] as num?)?.toInt() ?? 0,
+        windSpeed: (currentRaw['wind_speed'] as num?)?.toDouble() ?? 0.0,
+        uvi: (currentRaw['uvi'] as num?)?.toDouble() ?? 0.0,
+        clouds: (currentRaw['clouds'] as num?)?.toInt() ?? 0,
+        visibility: (currentRaw['visibility'] as num?)?.toInt() ?? 0,
+        summary: _summaryFrom(currentRaw['weather']),
+      );
+
+      final hourlyRaw = (data['hourly'] as List<dynamic>? ?? []).take(12).toList();
+      final hourly = hourlyRaw.map((h) {
+        final hm = h as Map<String, dynamic>;
+        return WeatherHourly(
+          dt: (hm['dt'] as num?)?.toInt() ?? 0,
+          temp: (hm['temp'] as num?)?.toDouble() ?? 0.0,
+          summary: _summaryFrom(hm['weather']),
+        );
+      }).toList();
+
+      final dailyRaw = (data['daily'] as List<dynamic>? ?? []).take(7).toList();
+      final daily = dailyRaw.map((d) {
+        final dm = d as Map<String, dynamic>;
+        final tempMap = dm['temp'] as Map<String, dynamic>? ?? {};
+        return WeatherDaily(
+          dt: (dm['dt'] as num?)?.toInt() ?? 0,
+          dayTemp: (tempMap['day'] as num?)?.toDouble() ?? 0.0,
+          minTemp: (tempMap['min'] as num?)?.toDouble() ?? 0.0,
+          maxTemp: (tempMap['max'] as num?)?.toDouble() ?? 0.0,
+          summary: _summaryFrom(dm['weather']),
+        );
+      }).toList();
+
+      appData.weatherDetails = WeatherDetails(
+        timezone: timezone,
+        timezoneOffset: timezoneOffset,
+        current: weatherCurrent,
+        hourly: hourly,
+        daily: daily,
+      );
     } catch (e, st) {
       // ignore: avoid_print
       print('[AppData] _loadWeather ERROR: $e\n$st');
+    }
+  }
+
+  Future<void> _loadAlbums() async {
+    try {
+      // ignore: avoid_print
+      print('[AppData] _loadAlbums: querying...');
+      final snap = await FirebaseFirestore.instance
+          .collection('albums')
+          .where('public', isEqualTo: true)
+          .limit(6)
+          .get();
+      // ignore: avoid_print
+      print('[AppData] _loadAlbums: got ${snap.docs.length} docs');
+
+      final albums = <AppAlbum>[];
+      for (final doc in snap.docs) {
+        final d = doc.data();
+        final userId = d['userId'] as String? ?? '';
+        final images = List<String>.from(d['images'] as List? ?? const []);
+        final coverUrl = images.isNotEmpty
+            ? await _resolveImage(userId, images.first)
+            : '';
+
+        albums.add(
+          AppAlbum(
+            id: doc.id,
+            name: d['name'] as String? ?? 'Untitled Album',
+            description: d['description'] as String? ?? '',
+            userId: userId,
+            images: images,
+            updateDate: (d['updateDate'] as num?)?.toInt() ?? 0,
+            coverUrl: coverUrl,
+          ),
+        );
+      }
+
+      albums.sort((a, b) => b.updateDate.compareTo(a.updateDate));
+      appData.albums = albums;
+    } catch (e, st) {
+      // ignore: avoid_print
+      print('[AppData] _loadAlbums ERROR: $e\n$st');
     }
   }
 }
