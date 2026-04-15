@@ -1,7 +1,9 @@
+import 'gallery.dart';
 import 'home.dart';
 import 'models.dart';
 import 'myposts.dart';
 import 'posts.dart';
+import 'weather.dart';
 import 'package:firebase_app_check/firebase_app_check.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter/foundation.dart';
@@ -66,60 +68,188 @@ class MyStatefulWidget extends StatefulWidget {
 class _MyStatefulWidgetState extends State<MyStatefulWidget> {
   int _selectedIndex = 0;
 
+  static const List<String> _pageTitles = <String>[
+    'Home',
+    'My Posts',
+    'Gallery',
+    'Weather',
+  ];
+
   void _onItemTapped(int index) {
     setState(() {
       _selectedIndex = index;
     });
   }
 
-  Widget navigate(int index) {
+  void _navigateFromDrawer(BuildContext context, int index) {
+    Navigator.of(context).pop();
+    if (_selectedIndex != index) {
+      _onItemTapped(index);
+    }
+  }
+
+  Future<void> _handleAccountAction(BuildContext context, RkeUser user) async {
+    Navigator.of(context).pop();
+    if (user.uid.isNotEmpty) {
+      await authService.signOut();
+      return;
+    }
+
+    await authService.googleSignIn();
+  }
+
+  Widget _buildDrawerHeader(RkeUser user) {
+    if (user.uid.isNotEmpty) {
+      return UserAccountsDrawerHeader(
+        margin: EdgeInsets.zero,
+        accountName: Text(user.name.isNotEmpty ? user.name : 'Guest'),
+        accountEmail: Text(
+          user.email.isNotEmpty ? user.email : 'Welcome to Roorkee',
+        ),
+        currentAccountPicture: CircleAvatar(
+          backgroundImage: NetworkImage(user.photoURL),
+        ),
+        decoration: const BoxDecoration(
+          color: Colors.blueAccent,
+        ),
+      );
+    }
+
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.fromLTRB(20, 24, 20, 20),
+      decoration: const BoxDecoration(
+        color: Colors.blueAccent,
+      ),
+      child: const Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          CircleAvatar(
+            radius: 28,
+            backgroundColor: Colors.white,
+            child: Icon(Icons.person_outline, color: Colors.blueAccent, size: 30),
+          ),
+          SizedBox(height: 14),
+          Text(
+            'Welcome to Roorkee',
+            style: TextStyle(
+              color: Colors.white,
+              fontSize: 18,
+              fontWeight: FontWeight.bold,
+            ),
+          ),
+          SizedBox(height: 4),
+          Text(
+            'Sign in to upload photos and access your posts.',
+            style: TextStyle(color: Colors.white70),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildDrawerItem({
+    required BuildContext context,
+    required int index,
+    required IconData icon,
+    required String title,
+  }) {
+    return ListTile(
+      leading: Icon(icon),
+      title: Text(title),
+      selected: _selectedIndex == index,
+      selectedTileColor: Colors.blue.shade50,
+      selectedColor: Colors.blueAccent,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(10),
+      ),
+      contentPadding: const EdgeInsets.symmetric(horizontal: 20),
+      onTap: () => _navigateFromDrawer(context, index),
+    );
+  }
+
+  Widget navigate(BuildContext context, int index) {
     if (index == 0) {
-      return const HomeWidget();
+      return HomeWidget(
+        onOpenWeather: () => _onItemTapped(3),
+        onOpenGallery: () => _onItemTapped(2),
+        onOpenAlbum: (album) {
+          Navigator.of(context).push(
+            MaterialPageRoute(
+              builder: (_) => AlbumDetailScreen(album: album),
+            ),
+          );
+        },
+      );
+    } else if (index == 1) {
+      return const MyPostsWidget();
+    } else if (index == 2) {
+      return const PhotoGalleryScreen();
     } else {
-      return MyPostsWidget();
+      return const WeatherDetailsWidget();
     }
   }
 
   @override
   Widget build(BuildContext context) {
+    final user = Provider.of<RkeUser>(context, listen: true);
+
     return Scaffold(
+      drawer: Drawer(
+        child: SafeArea(
+          child: Column(
+            children: [
+              _buildDrawerHeader(user),
+              const SizedBox(height: 8),
+              _buildDrawerItem(
+                context: context,
+                index: 0,
+                icon: Icons.home,
+                title: 'Home',
+              ),
+              _buildDrawerItem(
+                context: context,
+                index: 1,
+                icon: Icons.account_box,
+                title: 'My Posts',
+              ),
+              _buildDrawerItem(
+                context: context,
+                index: 2,
+                icon: Icons.photo_library,
+                title: 'Gallery',
+              ),
+              _buildDrawerItem(
+                context: context,
+                index: 3,
+                icon: Icons.wb_sunny,
+                title: 'Weather',
+              ),
+              const Divider(),
+              ListTile(
+                leading: Icon(
+                  user.uid.isNotEmpty ? Icons.logout : Icons.login,
+                ),
+                title: Text(user.uid.isNotEmpty ? 'Logout' : 'Login'),
+                onTap: () => _handleAccountAction(context, user),
+              ),
+            ],
+          ),
+        ),
+      ),
       appBar: AppBar(
-        title: Text('RkeApp'),
+        title: Text(_pageTitles[_selectedIndex]),
         backgroundColor: Colors.blueAccent,
-        actions: <Widget>[
-          CircleAvatar(
-            radius: 25,
-            backgroundColor: Colors.indigo,
-            child: CircleAvatar(
-              radius: 22,
-        backgroundImage: NetworkImage(
-          Provider.of<RkeUser>(context, listen: true).photoURL),
-            ),
-          )
-        ],
       ),
-      body: Center(
-        child: navigate(_selectedIndex),
-      ),
-      bottomNavigationBar: BottomNavigationBar(
-        items: const <BottomNavigationBarItem>[
-          BottomNavigationBarItem(
-            icon: Icon(Icons.home),
-            label: 'Home',
-          ),
-          BottomNavigationBarItem(
-            icon: Icon(Icons.account_box),
-            label: 'MyPosts',
-          ),
-          BottomNavigationBarItem(
-            icon: Icon(Icons.child_friendly),
-            label: 'LocalAds',
-          ),
-        ],
-        currentIndex: _selectedIndex,
-        selectedItemColor: Colors.amber,
-        onTap: _onItemTapped,
-      ),
+      body: navigate(context, _selectedIndex),
+      floatingActionButton: _selectedIndex == 1 && user.uid != ''
+          ? FloatingActionButton(
+              onPressed: () => MyPostsWidget.filePicker(context, user),
+              tooltip: 'Add Photo',
+              child: const Icon(Icons.add),
+            )
+          : null,
     );
   }
 }

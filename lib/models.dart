@@ -135,6 +135,26 @@ class AppEvent {
   }
 }
 
+class AppAlbum {
+  final String id;
+  final String name;
+  final String description;
+  final String userId;
+  final List<String> images;
+  final int updateDate;
+  final String coverUrl;
+
+  AppAlbum({
+    required this.id,
+    required this.name,
+    required this.description,
+    required this.userId,
+    required this.images,
+    required this.updateDate,
+    required this.coverUrl,
+  });
+}
+
 class WeatherDay {
   final double temp;
   final String condition;
@@ -143,12 +163,94 @@ class WeatherDay {
   WeatherDay({required this.temp, required this.condition, required this.icon});
 }
 
+class WeatherSummary {
+  final String main;
+  final String description;
+  final String icon;
+
+  WeatherSummary({
+    required this.main,
+    required this.description,
+    required this.icon,
+  });
+}
+
+class WeatherCurrent {
+  final int dt;
+  final double temp;
+  final int humidity;
+  final int pressure;
+  final double windSpeed;
+  final double uvi;
+  final int clouds;
+  final int visibility;
+  final WeatherSummary summary;
+
+  WeatherCurrent({
+    required this.dt,
+    required this.temp,
+    required this.humidity,
+    required this.pressure,
+    required this.windSpeed,
+    required this.uvi,
+    required this.clouds,
+    required this.visibility,
+    required this.summary,
+  });
+}
+
+class WeatherHourly {
+  final int dt;
+  final double temp;
+  final WeatherSummary summary;
+
+  WeatherHourly({
+    required this.dt,
+    required this.temp,
+    required this.summary,
+  });
+}
+
+class WeatherDaily {
+  final int dt;
+  final double dayTemp;
+  final double minTemp;
+  final double maxTemp;
+  final WeatherSummary summary;
+
+  WeatherDaily({
+    required this.dt,
+    required this.dayTemp,
+    required this.minTemp,
+    required this.maxTemp,
+    required this.summary,
+  });
+}
+
+class WeatherDetails {
+  final String timezone;
+  final int timezoneOffset;
+  final WeatherCurrent current;
+  final List<WeatherHourly> hourly;
+  final List<WeatherDaily> daily;
+
+  WeatherDetails({
+    required this.timezone,
+    required this.timezoneOffset,
+    required this.current,
+    required this.hourly,
+    required this.daily,
+  });
+}
+
 class AppData with ChangeNotifier {
   List<Post> posts = [];
   List<NewsItem> news = [];
   List<AppEvent> events = [];
+  List<AppAlbum> albums = [];
   WeatherDay? todayWeather;
   WeatherDay? tomorrowWeather;
+  WeatherDetails? weatherDetails;
   bool loading = true;
 
   void setLoaded() {
