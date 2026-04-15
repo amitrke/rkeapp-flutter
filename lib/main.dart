@@ -14,19 +14,17 @@ import 'dart:async';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
-  final FirebaseApp _ = kIsWeb
-      ? await Firebase.initializeApp(
-          options: const FirebaseOptions(
-            apiKey: 'AIzaSyAmDbGMOQoxr8LT_RP1O2DJqbHD40dj1Kg',
-            appId: '1:473096260334:web:bc48f4e8eafe7c02a1c1ff',
-            messagingSenderId: '473096260334',
-            projectId: 'rkeorg',
-            authDomain: 'rkeorg.firebaseapp.com',
-            databaseURL: 'https://rkeorg-default-rtdb.firebaseio.com',
-            storageBucket: 'rkeorg.appspot.com',
-          ),
-        )
-      : await Firebase.initializeApp();
+  final FirebaseApp _ = await Firebase.initializeApp(
+    options: const FirebaseOptions(
+      apiKey: kIsWeb ? 'AIzaSyAmDbGMOQoxr8LT_RP1O2DJqbHD40dj1Kg' : 'AIzaSyDd535g7OeDtyKiyIJ1hOlKt2xcgDSAnSE',
+      appId: kIsWeb ? '1:473096260334:web:bc48f4e8eafe7c02a1c1ff' : '1:473096260334:ios:9663975b0f5208a0a1c1ff',
+      messagingSenderId: '473096260334',
+      projectId: 'rkeorg',
+      authDomain: 'rkeorg.firebaseapp.com',
+      databaseURL: 'https://rkeorg-default-rtdb.firebaseio.com',
+      storageBucket: 'rkeorg.appspot.com',
+    ),
+  );
 
   if (!kIsWeb) {
     await FirebaseAppCheck.instance.activate(
