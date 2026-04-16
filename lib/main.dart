@@ -36,7 +36,12 @@ Future<void> main() async {
       providerApple:
           kReleaseMode
               ? const AppleDeviceCheckProvider()
-              : const AppleDebugProvider(),
+              : const AppleDebugProvider(
+                  // Token is injected via --dart-define=APP_CHECK_DEBUG_TOKEN=<uuid>
+                  // Register the uuid at: Firebase Console → App Check →
+                  // Apps → RkeApp (iOS) → Manage debug tokens
+                  debugToken: String.fromEnvironment('APP_CHECK_DEBUG_TOKEN'),
+                ),
     );
   }
 
