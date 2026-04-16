@@ -170,9 +170,22 @@ class AuthService {
       final userCredential = await _auth.signInWithCredential(oauthCredential);
       final user = userCredential.user;
       if (user != null) {
-        updateUserData(user);
+        // Apple only provides name on the very first sign-in.
+        // Persist it to the Firebase Auth profile so it survives re-logins.
+        final givenName = appleCredential.givenName;
+        final familyName = appleCredential.familyName;
+        if (givenName != null || familyName != null) {
+          final fullName = [givenName, familyName]
+              .where((n) => n != null && n.isNotEmpty)
+              .join(' ');
+          if (user.displayName == null || user.displayName!.isEmpty) {
+            await user.updateDisplayName(fullName);
+            await user.reload();
+          }
+        }
+        updateUserData(_auth.currentUser ?? user);
         // ignore: avoid_print
-        print('Apple sign-in: ${user.displayName ?? user.email}');
+        print('Apple sign-in: ${_auth.currentUser?.displayName ?? user.email}');
       }
       loading.add(false);
       return user;
@@ -197,13 +210,19 @@ class AuthService {
   void updateUserData(User user) async {
     final db = FirebaseDatabase.instance.ref();
     final userRef = db.child('users').child(user.uid);
-    await userRef.get();
-    await userRef.set({
-      'name': user.displayName,
-      'email': user.email,
-      'photoURL': user.photoURL,
-      'lastSeen': DateTime.now().toIso8601String()
-    });
+    // Use update() with only non-null values so re-logins never overwrite
+    // a previously stored name/photo with null (e.g. Apple Sign-In).
+    final data = <String, dynamic>{
+      'lastSeen': DateTime.now().toIso8601String(),
+    };
+    if (user.email != null) data['email'] = user.email;
+    if (user.displayName != null && user.displayName!.isNotEmpty) {
+      data['name'] = user.displayName;
+    }
+    if (user.photoURL != null && user.photoURL!.isNotEmpty) {
+      data['photoURL'] = user.photoURL;
+    }
+    await userRef.update(data);
   }
 
   Future<String> signOut() async {
