@@ -1,9 +1,14 @@
+import 'dart:convert';
+import 'dart:math';
+
 import 'models.dart';
+import 'package:crypto/crypto.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:google_sign_in/google_sign_in.dart';
 import 'package:firebase_database/firebase_database.dart';
 import 'package:flutter/foundation.dart';
 import 'package:rxdart/rxdart.dart';
+import 'package:sign_in_with_apple/sign_in_with_apple.dart';
 
 class AuthService {
   final FirebaseAuth _auth = FirebaseAuth.instance;
@@ -111,6 +116,57 @@ class AuthService {
     }
   }
 
+  // ── Apple Sign-In helpers ─────────────────────────────────────────────────
+
+  String _generateNonce([int length = 32]) {
+    const charset =
+        '0123456789ABCDEFGHIJKLMNOPQRSTUVXYZabcdefghijklmnopqrstuvwxyz-._';
+    final random = Random.secure();
+    return List.generate(length, (_) => charset[random.nextInt(charset.length)])
+        .join();
+  }
+
+  String _sha256ofString(String input) {
+    final bytes = utf8.encode(input);
+    return sha256.convert(bytes).toString();
+  }
+
+  Future<User?> appleSignIn() async {
+    try {
+      loading.add(true);
+      final rawNonce = _generateNonce();
+      final nonce = _sha256ofString(rawNonce);
+
+      final appleCredential = await SignInWithApple.getAppleIDCredential(
+        scopes: [
+          AppleIDAuthorizationScopes.email,
+          AppleIDAuthorizationScopes.fullName,
+        ],
+        nonce: nonce,
+      );
+
+      final oauthCredential = OAuthProvider('apple.com').credential(
+        idToken: appleCredential.identityToken,
+        rawNonce: rawNonce,
+      );
+
+      final userCredential = await _auth.signInWithCredential(oauthCredential);
+      final user = userCredential.user;
+      if (user != null) {
+        updateUserData(user);
+        // ignore: avoid_print
+        print('Apple sign-in: ${user.displayName ?? user.email}');
+      }
+      loading.add(false);
+      return user;
+    } catch (error) {
+      // ignore: avoid_print
+      print(error);
+      loading.add(false);
+      return null;
+    }
+  }
+
   void updateUserData(User user) async {
     final db = FirebaseDatabase.instance.ref();
     final userRef = db.child('users').child(user.uid);
@@ -125,8 +181,13 @@ class AuthService {
 
   Future<String> signOut() async {
     try {
+      final providers =
+          _auth.currentUser?.providerData.map((p) => p.providerId).toList() ??
+          [];
       await _auth.signOut();
-      await GoogleSignIn.instance.signOut();
+      if (!kIsWeb && providers.contains('google.com')) {
+        await GoogleSignIn.instance.signOut();
+      }
       return 'SignOut';
     } catch (e) {
       return e.toString();

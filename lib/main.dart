@@ -9,6 +9,7 @@ import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import 'dart:io' show Platform;
 import 'auth.dart';
 import 'dart:async';
 
@@ -93,7 +94,40 @@ class _MyStatefulWidgetState extends State<MyStatefulWidget> {
       return;
     }
 
-    await authService.googleSignIn();
+    if (!kIsWeb && Platform.isIOS) {
+      await _showSignInSheet(context);
+    } else {
+      await authService.googleSignIn();
+    }
+  }
+
+  Future<void> _showSignInSheet(BuildContext context) async {
+    await showModalBottomSheet<void>(
+      context: context,
+      builder: (ctx) => SafeArea(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            ListTile(
+              leading: const Icon(Icons.login),
+              title: const Text('Sign in with Google'),
+              onTap: () {
+                Navigator.of(ctx).pop();
+                authService.googleSignIn();
+              },
+            ),
+            ListTile(
+              leading: const Icon(Icons.apple),
+              title: const Text('Sign in with Apple'),
+              onTap: () {
+                Navigator.of(ctx).pop();
+                authService.appleSignIn();
+              },
+            ),
+          ],
+        ),
+      ),
+    );
   }
 
   Widget _buildDrawerHeader(RkeUser user) {
