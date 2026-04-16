@@ -2,6 +2,7 @@ import 'package:RkeApp/models.dart';
 import 'package:RkeApp/post_detail.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import 'package:url_launcher/url_launcher.dart';
 
 class HomeWidget extends StatelessWidget {
   final VoidCallback? onOpenWeather;
@@ -14,6 +15,77 @@ class HomeWidget extends StatelessWidget {
     this.onOpenGallery,
     this.onOpenAlbum,
   });
+
+  Uri? _normalizeUrl(String rawUrl) {
+    final trimmed = rawUrl.trim();
+    if (trimmed.isEmpty) {
+      return null;
+    }
+
+    final withScheme = trimmed.startsWith('http://') || trimmed.startsWith('https://')
+        ? trimmed
+        : 'https://$trimmed';
+    final uri = Uri.tryParse(withScheme);
+
+    if (uri == null || uri.host.isEmpty) {
+      return null;
+    }
+    return uri;
+  }
+
+  Future<void> _openNewsLink(BuildContext context, String rawUrl) async {
+    final uri = _normalizeUrl(rawUrl);
+    if (uri == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('No valid link is available for this news item.')),
+      );
+      return;
+    }
+
+    final launched = await launchUrl(uri, mode: LaunchMode.externalApplication);
+    if (!launched && context.mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Unable to open this link right now.')),
+      );
+    }
+  }
+
+  void _showFullImagePreview(BuildContext context, String imageUrl) {
+    showDialog<void>(
+      context: context,
+      builder: (_) {
+        return Dialog.fullscreen(
+          child: Stack(
+            children: [
+              Container(
+                color: Colors.black,
+                alignment: Alignment.center,
+                child: InteractiveViewer(
+                  child: Image.network(
+                    imageUrl,
+                    fit: BoxFit.contain,
+                    errorBuilder: (_, __, ___) => const Icon(
+                      Icons.broken_image,
+                      color: Colors.white54,
+                      size: 64,
+                    ),
+                  ),
+                ),
+              ),
+              Positioned(
+                top: 20,
+                right: 20,
+                child: IconButton(
+                  onPressed: () => Navigator.of(context).pop(),
+                  icon: const Icon(Icons.close, color: Colors.white),
+                ),
+              ),
+            ],
+          ),
+        );
+      },
+    );
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -135,15 +207,27 @@ class HomeWidget extends StatelessWidget {
 
   Widget _buildSectionHeader(String title) {
     return Text(title,
-        style:
-            const TextStyle(fontSize: 18, fontWeight: FontWeight.bold));
+        style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold));
   }
 
   Widget _buildGalleryHeader() {
     return Row(
       mainAxisAlignment: MainAxisAlignment.spaceBetween,
       children: [
-        _buildSectionHeader('From the Gallery'),
+        const Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              'From the Gallery',
+              style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+            ),
+            SizedBox(height: 2),
+            Text(
+              'Tap album, or long-press image for fullscreen',
+              style: TextStyle(fontSize: 11, color: Colors.grey),
+            ),
+          ],
+        ),
         TextButton(
           onPressed: onOpenGallery,
           child: const Text('View all'),
@@ -237,8 +321,7 @@ class HomeWidget extends StatelessWidget {
     if (news.isEmpty) {
       return const Padding(
         padding: EdgeInsets.symmetric(vertical: 16),
-        child: Text('No news available.',
-            style: TextStyle(color: Colors.grey)),
+        child: Text('No news available.', style: TextStyle(color: Colors.grey)),
       );
     }
     return SizedBox(
@@ -255,40 +338,60 @@ class HomeWidget extends StatelessWidget {
   Widget _buildNewsCard(NewsItem item) {
     return SizedBox(
       width: 180,
-      child: Card(
-        elevation: 2,
-        clipBehavior: Clip.antiAlias,
-        shape:
-            RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            _cardImage(item.imageUrl),
-            Padding(
-              padding: const EdgeInsets.all(8),
+      child: Builder(
+        builder: (context) {
+          final hasLink = _normalizeUrl(item.url) != null;
+          return InkWell(
+            borderRadius: BorderRadius.circular(10),
+            onTap: hasLink ? () => _openNewsLink(context, item.url) : null,
+            child: Card(
+              elevation: 2,
+              clipBehavior: Clip.antiAlias,
+              shape:
+                  RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text(item.title,
-                      maxLines: 2,
-                      overflow: TextOverflow.ellipsis,
-                      style: const TextStyle(
-                          fontWeight: FontWeight.bold, fontSize: 13)),
-                  const SizedBox(height: 4),
-                  Text(
-                    item.description.length > 80
-                        ? '${item.description.substring(0, 80)}...'
-                        : item.description,
-                    maxLines: 3,
-                    overflow: TextOverflow.ellipsis,
-                    style:
-                        const TextStyle(fontSize: 11, color: Colors.grey),
+                  _cardImage(item.imageUrl),
+                  Padding(
+                    padding: const EdgeInsets.all(8),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(item.title,
+                            maxLines: 2,
+                            overflow: TextOverflow.ellipsis,
+                            style: const TextStyle(
+                                fontWeight: FontWeight.bold, fontSize: 13)),
+                        const SizedBox(height: 4),
+                        Text(
+                          item.description.length > 80
+                              ? '${item.description.substring(0, 80)}...'
+                              : item.description,
+                          maxLines: 3,
+                          overflow: TextOverflow.ellipsis,
+                          style:
+                              const TextStyle(fontSize: 11, color: Colors.grey),
+                        ),
+                        if (hasLink) ...[
+                          const SizedBox(height: 8),
+                          const Text(
+                            'Open in browser',
+                            style: TextStyle(
+                              fontSize: 11,
+                              color: Colors.blueAccent,
+                              fontWeight: FontWeight.w600,
+                            ),
+                          ),
+                        ],
+                      ],
+                    ),
                   ),
                 ],
               ),
             ),
-          ],
-        ),
+          );
+        },
       ),
     );
   }
@@ -320,8 +423,7 @@ class HomeWidget extends StatelessWidget {
     if (events.isEmpty) {
       return const Padding(
         padding: EdgeInsets.symmetric(vertical: 16),
-        child: Text('No upcoming events.',
-            style: TextStyle(color: Colors.grey)),
+        child: Text('No upcoming events.', style: TextStyle(color: Colors.grey)),
       );
     }
     return Column(
@@ -332,8 +434,7 @@ class HomeWidget extends StatelessWidget {
   Widget _buildEventTile(AppEvent event) {
     return Card(
       margin: const EdgeInsets.only(bottom: 8),
-      shape:
-          RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
       child: ListTile(
         leading: Container(
           width: 50,
@@ -358,11 +459,10 @@ class HomeWidget extends StatelessWidget {
             ],
           ),
         ),
-        title: Text(event.name,
-            style: const TextStyle(fontWeight: FontWeight.bold)),
+        title:
+            Text(event.name, style: const TextStyle(fontWeight: FontWeight.bold)),
         subtitle: event.description.isNotEmpty
-            ? Text(event.description,
-                maxLines: 2, overflow: TextOverflow.ellipsis)
+            ? Text(event.description, maxLines: 2, overflow: TextOverflow.ellipsis)
             : null,
       ),
     );
@@ -382,7 +482,7 @@ class HomeWidget extends StatelessWidget {
         scrollDirection: Axis.horizontal,
         itemCount: albums.length,
         separatorBuilder: (_, __) => const SizedBox(width: 10),
-        itemBuilder: (_, i) {
+        itemBuilder: (context, i) {
           final album = albums[i];
           return InkWell(
             borderRadius: BorderRadius.circular(10),
@@ -393,6 +493,9 @@ class HomeWidget extends StatelessWidget {
               }
               onOpenGallery?.call();
             },
+            onLongPress: album.coverUrl.isNotEmpty
+                ? () => _showFullImagePreview(context, album.coverUrl)
+                : null,
             child: ClipRRect(
               borderRadius: BorderRadius.circular(10),
               child: Stack(
