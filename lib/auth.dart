@@ -134,6 +134,14 @@ class AuthService {
   Future<User?> appleSignIn() async {
     try {
       loading.add(true);
+
+      if (!await SignInWithApple.isAvailable()) {
+        // ignore: avoid_print
+        print('Sign in with Apple is not available on this device.');
+        loading.add(false);
+        return null;
+      }
+
       final rawNonce = _generateNonce();
       final nonce = _sha256ofString(rawNonce);
 
@@ -145,8 +153,17 @@ class AuthService {
         nonce: nonce,
       );
 
+      if (appleCredential.identityToken == null ||
+          appleCredential.identityToken!.isEmpty) {
+        // ignore: avoid_print
+        print('Apple sign-in failed: missing identity token.');
+        loading.add(false);
+        return null;
+      }
+
       final oauthCredential = OAuthProvider('apple.com').credential(
         idToken: appleCredential.identityToken,
+        accessToken: appleCredential.authorizationCode,
         rawNonce: rawNonce,
       );
 
@@ -159,6 +176,16 @@ class AuthService {
       }
       loading.add(false);
       return user;
+    } on SignInWithAppleAuthorizationException catch (error) {
+      // ignore: avoid_print
+      print('SignInWithAppleAuthorizationException(${error.code}): ${error.message}');
+      loading.add(false);
+      return null;
+    } on FirebaseAuthException catch (error) {
+      // ignore: avoid_print
+      print('FirebaseAuthException(${error.code}): ${error.message}');
+      loading.add(false);
+      return null;
     } catch (error) {
       // ignore: avoid_print
       print(error);

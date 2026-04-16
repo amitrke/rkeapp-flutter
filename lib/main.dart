@@ -111,17 +111,35 @@ class _MyStatefulWidgetState extends State<MyStatefulWidget> {
             ListTile(
               leading: const Icon(Icons.login),
               title: const Text('Sign in with Google'),
-              onTap: () {
+              onTap: () async {
                 Navigator.of(ctx).pop();
-                authService.googleSignIn();
+                final signedInUser = await authService.googleSignIn();
+                if (!context.mounted || signedInUser != null) {
+                  return;
+                }
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(
+                    content: Text('Google sign-in failed. Please try again.'),
+                  ),
+                );
               },
             ),
             ListTile(
               leading: const Icon(Icons.apple),
               title: const Text('Sign in with Apple'),
-              onTap: () {
+              onTap: () async {
                 Navigator.of(ctx).pop();
-                authService.appleSignIn();
+                final signedInUser = await authService.appleSignIn();
+                if (!context.mounted || signedInUser != null) {
+                  return;
+                }
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(
+                    content: Text(
+                      'Apple sign-in failed. Verify Sign in with Apple in Apple/Firebase config and try again.',
+                    ),
+                  ),
+                );
               },
             ),
           ],
