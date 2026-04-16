@@ -42,6 +42,48 @@ class HomeWidget extends StatelessWidget {
       return;
     }
 
+    // Show confirmation before opening in browser
+    if (!context.mounted) return;
+    final shouldOpen = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('Open in Browser'),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const Text('This will open the following link in your browser:'),
+            const SizedBox(height: 12),
+            Container(
+              padding: const EdgeInsets.all(8),
+              decoration: BoxDecoration(
+                color: Colors.grey.shade100,
+                borderRadius: BorderRadius.circular(6),
+              ),
+              child: Text(
+                uri.toString(),
+                maxLines: 3,
+                overflow: TextOverflow.ellipsis,
+                style: const TextStyle(fontSize: 12, color: Colors.grey),
+              ),
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(ctx).pop(false),
+            child: const Text('Cancel'),
+          ),
+          TextButton(
+            onPressed: () => Navigator.of(ctx).pop(true),
+            child: const Text('Open', style: TextStyle(color: Colors.blueAccent)),
+          ),
+        ],
+      ),
+    ) ?? false;
+
+    if (!shouldOpen) return;
+
     final launched = await launchUrl(uri, mode: LaunchMode.externalApplication);
     if (!launched && context.mounted) {
       ScaffoldMessenger.of(context).showSnackBar(
@@ -353,38 +395,43 @@ class HomeWidget extends StatelessWidget {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   _cardImage(item.imageUrl),
-                  Padding(
-                    padding: const EdgeInsets.all(8),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(item.title,
-                            maxLines: 2,
-                            overflow: TextOverflow.ellipsis,
-                            style: const TextStyle(
-                                fontWeight: FontWeight.bold, fontSize: 13)),
-                        const SizedBox(height: 4),
-                        Text(
-                          item.description.length > 80
-                              ? '${item.description.substring(0, 80)}...'
-                              : item.description,
-                          maxLines: 3,
-                          overflow: TextOverflow.ellipsis,
-                          style:
-                              const TextStyle(fontSize: 11, color: Colors.grey),
-                        ),
-                        if (hasLink) ...[
-                          const SizedBox(height: 8),
-                          const Text(
-                            'Open in browser',
-                            style: TextStyle(
-                              fontSize: 11,
-                              color: Colors.blueAccent,
-                              fontWeight: FontWeight.w600,
+                  Expanded(
+                    child: Padding(
+                      padding: const EdgeInsets.all(8),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(item.title,
+                              maxLines: 2,
+                              overflow: TextOverflow.ellipsis,
+                              style: const TextStyle(
+                                  fontWeight: FontWeight.bold, fontSize: 13)),
+                          const SizedBox(height: 4),
+                          Expanded(
+                            child: Text(
+                              item.description.length > 80
+                                  ? '${item.description.substring(0, 80)}...'
+                                  : item.description,
+                              maxLines: 2,
+                              overflow: TextOverflow.ellipsis,
+                              style:
+                                  const TextStyle(fontSize: 11, color: Colors.grey),
                             ),
                           ),
+                          if (hasLink) ...[
+                            const SizedBox(height: 4),
+                            const Text(
+                              'Open in browser',
+                              maxLines: 1,
+                              style: TextStyle(
+                                fontSize: 10,
+                                color: Colors.blueAccent,
+                                fontWeight: FontWeight.w600,
+                              ),
+                            ),
+                          ],
                         ],
-                      ],
+                      ),
                     ),
                   ),
                 ],
