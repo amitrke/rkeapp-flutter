@@ -134,6 +134,14 @@ class AuthService {
   Future<User?> appleSignIn() async {
     try {
       loading.add(true);
+
+      if (!await SignInWithApple.isAvailable()) {
+        // ignore: avoid_print
+        print('Sign in with Apple is not available on this device.');
+        loading.add(false);
+        return null;
+      }
+
       final rawNonce = _generateNonce();
       final nonce = _sha256ofString(rawNonce);
 
@@ -145,20 +153,52 @@ class AuthService {
         nonce: nonce,
       );
 
+      if (appleCredential.identityToken == null ||
+          appleCredential.identityToken!.isEmpty) {
+        // ignore: avoid_print
+        print('Apple sign-in failed: missing identity token.');
+        loading.add(false);
+        return null;
+      }
+
       final oauthCredential = OAuthProvider('apple.com').credential(
         idToken: appleCredential.identityToken,
+        accessToken: appleCredential.authorizationCode,
         rawNonce: rawNonce,
       );
 
       final userCredential = await _auth.signInWithCredential(oauthCredential);
       final user = userCredential.user;
       if (user != null) {
-        updateUserData(user);
+        // Apple only provides name on the very first sign-in.
+        // Persist it to the Firebase Auth profile so it survives re-logins.
+        final givenName = appleCredential.givenName;
+        final familyName = appleCredential.familyName;
+        if (givenName != null || familyName != null) {
+          final fullName = [givenName, familyName]
+              .where((n) => n != null && n.isNotEmpty)
+              .join(' ');
+          if (user.displayName == null || user.displayName!.isEmpty) {
+            await user.updateDisplayName(fullName);
+            await user.reload();
+          }
+        }
+        updateUserData(_auth.currentUser ?? user);
         // ignore: avoid_print
-        print('Apple sign-in: ${user.displayName ?? user.email}');
+        print('Apple sign-in: ${_auth.currentUser?.displayName ?? user.email}');
       }
       loading.add(false);
       return user;
+    } on SignInWithAppleAuthorizationException catch (error) {
+      // ignore: avoid_print
+      print('SignInWithAppleAuthorizationException(${error.code}): ${error.message}');
+      loading.add(false);
+      return null;
+    } on FirebaseAuthException catch (error) {
+      // ignore: avoid_print
+      print('FirebaseAuthException(${error.code}): ${error.message}');
+      loading.add(false);
+      return null;
     } catch (error) {
       // ignore: avoid_print
       print(error);
@@ -170,13 +210,19 @@ class AuthService {
   void updateUserData(User user) async {
     final db = FirebaseDatabase.instance.ref();
     final userRef = db.child('users').child(user.uid);
-    await userRef.get();
-    await userRef.set({
-      'name': user.displayName,
-      'email': user.email,
-      'photoURL': user.photoURL,
-      'lastSeen': DateTime.now().toIso8601String()
-    });
+    // Use update() with only non-null values so re-logins never overwrite
+    // a previously stored name/photo with null (e.g. Apple Sign-In).
+    final data = <String, dynamic>{
+      'lastSeen': DateTime.now().toIso8601String(),
+    };
+    if (user.email != null) data['email'] = user.email;
+    if (user.displayName != null && user.displayName!.isNotEmpty) {
+      data['name'] = user.displayName;
+    }
+    if (user.photoURL != null && user.photoURL!.isNotEmpty) {
+      data['photoURL'] = user.photoURL;
+    }
+    await userRef.update(data);
   }
 
   Future<String> signOut() async {
