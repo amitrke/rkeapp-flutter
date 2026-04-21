@@ -1,3 +1,4 @@
+import 'package:RkeApp/all_posts.dart';
 import 'package:RkeApp/models.dart';
 import 'package:RkeApp/post_detail.dart';
 import 'package:flutter/material.dart';
@@ -147,7 +148,19 @@ class HomeWidget extends StatelessWidget {
                 _buildWeatherSection(appData),
                 const SizedBox(height: 24),
               ],
-              _buildSectionHeader('Recent Posts'),
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  _buildSectionHeader('Recent Posts'),
+                  TextButton(
+                    onPressed: () => Navigator.push(
+                      context,
+                      MaterialPageRoute(builder: (_) => const AllPostsScreen()),
+                    ),
+                    child: const Text('View all →'),
+                  ),
+                ],
+              ),
               const SizedBox(height: 8),
               _buildPostsRow(appData.posts),
               const SizedBox(height: 24),

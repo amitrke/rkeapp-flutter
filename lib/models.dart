@@ -258,3 +258,130 @@ class AppData with ChangeNotifier {
     notifyListeners();
   }
 }
+
+// ---------- Account / moderation models ----------
+
+class UserNotification {
+  final String id;
+  final String userId;
+  final String type; // 'approved' | 'rejected'
+  final String itemId;
+  final String itemTitle;
+  final String itemType; // 'post' | 'album'
+  final String? rejectionReason;
+  final int createdAt;
+  final bool read;
+
+  UserNotification({
+    required this.id,
+    required this.userId,
+    required this.type,
+    required this.itemId,
+    required this.itemTitle,
+    required this.itemType,
+    this.rejectionReason,
+    required this.createdAt,
+    required this.read,
+  });
+
+  factory UserNotification.fromDoc(String id, Map<String, dynamic> d) {
+    return UserNotification(
+      id: id,
+      userId: d['userId'] as String? ?? '',
+      type: d['type'] as String? ?? '',
+      itemId: d['itemId'] as String? ?? '',
+      itemTitle: d['itemTitle'] as String? ?? '',
+      itemType: d['itemType'] as String? ?? '',
+      rejectionReason: d['rejectionReason'] as String?,
+      createdAt: d['createdAt'] as int? ?? 0,
+      read: d['read'] as bool? ?? false,
+    );
+  }
+}
+
+class MyUserPost {
+  final String id;
+  final String title;
+  final String intro;
+  final String category;
+  final String edState;
+  final List<String> images;
+  final bool public;
+  final bool? approved;
+  final int updateDate;
+  final String slug;
+
+  MyUserPost({
+    required this.id,
+    required this.title,
+    required this.intro,
+    required this.category,
+    required this.edState,
+    required this.images,
+    required this.public,
+    this.approved,
+    required this.updateDate,
+    required this.slug,
+  });
+
+  /// 'draft' | 'pending' | 'published'
+  String get status {
+    if (!public) return 'draft';
+    if (approved == true) return 'published';
+    return 'pending';
+  }
+
+  factory MyUserPost.fromDoc(String id, Map<String, dynamic> d) {
+    return MyUserPost(
+      id: id,
+      title: d['title'] as String? ?? '',
+      intro: d['intro'] as String? ?? '',
+      category: d['category'] as String? ?? '',
+      edState: d['edState'] as String? ?? '',
+      images: List<String>.from(d['images'] as List? ?? []),
+      public: d['public'] as bool? ?? false,
+      approved: d['approved'] as bool?,
+      updateDate: d['updateDate'] as int? ?? 0,
+      slug: d['slug'] as String? ?? '',
+    );
+  }
+}
+
+class MyUserAlbum {
+  final String id;
+  final String name;
+  final String description;
+  final List<String> images;
+  final bool public;
+  final bool? approved;
+  final int updateDate;
+
+  MyUserAlbum({
+    required this.id,
+    required this.name,
+    required this.description,
+    required this.images,
+    required this.public,
+    this.approved,
+    required this.updateDate,
+  });
+
+  /// 'draft' | 'pending' | 'published'
+  String get status {
+    if (!public) return 'draft';
+    if (approved == true) return 'published';
+    return 'pending';
+  }
+
+  factory MyUserAlbum.fromDoc(String id, Map<String, dynamic> d) {
+    return MyUserAlbum(
+      id: id,
+      name: d['name'] as String? ?? '',
+      description: d['description'] as String? ?? '',
+      images: List<String>.from(d['images'] as List? ?? []),
+      public: d['public'] as bool? ?? false,
+      approved: d['approved'] as bool?,
+      updateDate: d['updateDate'] as int? ?? 0,
+    );
+  }
+}
