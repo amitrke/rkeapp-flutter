@@ -1,0 +1,43 @@
+appId: org.roorkee
+env:
+  SCREENSHOT_DIR: ${MAESTRO_SCREENSHOT_DIR}
+---
+# App-store focused screenshot set.
+# Use clean data and a signed-in account before running.
+
+- launchApp:
+    clearState: false
+
+- extendedWaitUntil:
+    visible: "Welcome to Roorkee"
+    timeout: 30000
+- takeScreenshot: ${SCREENSHOT_DIR}/01_home
+
+- scroll
+- takeScreenshot: ${SCREENSHOT_DIR}/02_home_content
+
+- tapOn:
+    text: "Open navigation menu"
+- tapOn: "Gallery"
+- extendedWaitUntil:
+    visible: "Gallery"
+    timeout: 8000
+- takeScreenshot: ${SCREENSHOT_DIR}/03_gallery
+
+- tapOn:
+    text: "Open navigation menu"
+- tapOn: "Weather"
+- extendedWaitUntil:
+    visible: "Weather"
+    timeout: 8000
+- takeScreenshot: ${SCREENSHOT_DIR}/04_weather
+
+- tapOn:
+    text: "Open navigation menu"
+- tapOn: "Account"
+- extendedWaitUntil:
+    visible: "Account"
+    timeout: 8000
+- takeScreenshot: ${SCREENSHOT_DIR}/05_account
+
+- stopApp

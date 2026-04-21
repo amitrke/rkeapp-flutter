@@ -52,3 +52,9 @@ node_modules/
 *.keystore
 android/key.properties
 ios/ExportOptions.plist
+
+# Maestro screenshot output (generated)
+screenshots/*
+!screenshots/README.md
+!screenshots/store/
+!screenshots/store/**
