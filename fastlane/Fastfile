@@ -34,6 +34,7 @@ platform :android do
       json_key: ENV.fetch("SUPPLY_JSON_KEY"),
       package_name: ENV.fetch("ANDROID_PACKAGE_NAME", "org.roorkee"),
       track: ENV.fetch("PLAY_STORE_TRACK", "internal"),
+      release_status: "draft",
       metadata_path: metadata_path,
       skip_upload_apk: true,
       skip_upload_aab: true,
