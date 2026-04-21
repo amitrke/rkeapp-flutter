@@ -1,0 +1,57 @@
+default_platform(:android)
+
+platform :android do
+  desc "Upload curated Android screenshots to Google Play"
+  lane :upload_screenshots do
+    repo_root = File.expand_path("..", __dir__)
+    metadata_path = File.join(repo_root, "fastlane", "metadata", "android")
+    screenshots_source = File.join(repo_root, "screenshots", "store", "android")
+
+    phone_target = File.join(metadata_path, "en-US", "images", "phoneScreenshots")
+    seven_inch_target = File.join(metadata_path, "en-US", "images", "sevenInchScreenshots")
+    ten_inch_target = File.join(metadata_path, "en-US", "images", "tenInchScreenshots")
+
+    FileUtils.rm_rf(metadata_path)
+    FileUtils.mkdir_p(phone_target)
+    FileUtils.mkdir_p(seven_inch_target)
+    FileUtils.mkdir_p(ten_inch_target)
+
+    phone_screenshots = Dir.glob(File.join(screenshots_source, "phone", "*.png")).sort
+    tablet7_screenshots = Dir.glob(File.join(screenshots_source, "tablet-7", "*.png")).sort
+    tablet10_screenshots = Dir.glob(File.join(screenshots_source, "tablet-10", "*.png")).sort
+
+    UI.user_error!("No phone screenshots found in screenshots/store/android/phone") if phone_screenshots.empty?
+
+    phone_screenshots.each { |path| FileUtils.cp(path, phone_target) }
+    tablet7_screenshots.each { |path| FileUtils.cp(path, seven_inch_target) }
+    tablet10_screenshots.each { |path| FileUtils.cp(path, ten_inch_target) }
+
+    UI.message("Copied #{phone_screenshots.length} phone screenshots")
+    UI.message("Copied #{tablet7_screenshots.length} 7-inch tablet screenshots")
+    UI.message("Copied #{tablet10_screenshots.length} 10-inch tablet screenshots")
+
+    upload_to_play_store(
+      json_key: ENV.fetch("SUPPLY_JSON_KEY"),
+      package_name: ENV.fetch("ANDROID_PACKAGE_NAME", "org.roorkee"),
+      metadata_path: metadata_path,
+      skip_upload_apk: true,
+      skip_upload_aab: true,
+      skip_upload_metadata: true,
+      skip_upload_changelogs: true,
+      skip_upload_images: true,
+      skip_upload_screenshots: false,
+      sync_image_upload: true
+    )
+
+    UI.success("Android screenshots uploaded to Google Play")
+  end
+
+  desc "Create curated Android screenshot folders"
+  lane :prepare_screenshots do
+    repo_root = File.expand_path("..", __dir__)
+    FileUtils.mkdir_p(File.join(repo_root, "screenshots", "store", "android", "phone"))
+    FileUtils.mkdir_p(File.join(repo_root, "screenshots", "store", "android", "tablet-7"))
+    FileUtils.mkdir_p(File.join(repo_root, "screenshots", "store", "android", "tablet-10"))
+    UI.success("Prepared screenshots/store/android/{phone,tablet-7,tablet-10}")
+  end
+end

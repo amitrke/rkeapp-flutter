@@ -65,6 +65,7 @@ class MyApp extends StatelessWidget {
   Widget build(BuildContext context) {
     return MaterialApp(
       title: 'RkeApp',
+      debugShowCheckedModeBanner: false,
       home: const MyStatefulWidget(),
     );
   }

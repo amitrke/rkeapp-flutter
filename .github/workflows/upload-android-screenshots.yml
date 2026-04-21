@@ -1,0 +1,42 @@
+name: Upload Android Screenshots
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - main
+    paths:
+      - 'screenshots/store/android/**'
+      - 'fastlane/**'
+      - 'Gemfile'
+
+jobs:
+  upload-android-screenshots:
+    runs-on: ubuntu-latest
+    env:
+      ANDROID_PACKAGE_NAME: org.roorkee
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Ruby
+        uses: ruby/setup-ruby@v1
+        with:
+          ruby-version: '3.2'
+          bundler-cache: true
+
+      - name: Create Play service account key file
+        env:
+          PLAYSTORE_SERVICE_ACCOUNT_JSON: ${{ secrets.PLAYSTORE_SERVICE_ACCOUNT_JSON }}
+        run: |
+          test -n "$PLAYSTORE_SERVICE_ACCOUNT_JSON" || (echo "Missing PLAYSTORE_SERVICE_ACCOUNT_JSON secret" && exit 1)
+          echo "$PLAYSTORE_SERVICE_ACCOUNT_JSON" > play_store_key.json
+          echo "SUPPLY_JSON_KEY=${{ github.workspace }}/play_store_key.json" >> "$GITHUB_ENV"
+
+      - name: Upload screenshots to Google Play
+        run: bundle exec fastlane android upload_screenshots
+
+      - name: Cleanup key file
+        if: always()
+        run: rm -f play_store_key.json

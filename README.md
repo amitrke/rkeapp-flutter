@@ -36,7 +36,9 @@ Bash:
 
 Generated screenshots are written to `screenshots/{device-id}/`.
 
-For details on flow files and store folder organization, see:
+Curated Android screenshots under `screenshots/store/android/**` can now be uploaded to Google Play automatically through the `Upload Android Screenshots` GitHub Actions workflow.
+
+For details on flow files, store folder organization, and upload steps, see:
 
 - `.maestro/README.md`
 - `screenshots/README.md`

@@ -9,6 +9,7 @@ screenshots/
 ├── store/                           # Commit this (curated, review-ready)
 │   ├── android/
 │   │   ├── phone/
+│   │   ├── tablet-7/
 │   │   └── tablet-10/
 │   └── ios/
 │       ├── iphone-6.5/
@@ -47,8 +48,27 @@ Example:
 
 ```bash
 cp screenshots/android-phone/*.png screenshots/store/android/phone/
+cp screenshots/android-tablet-7/*.png screenshots/store/android/tablet-7/
+cp screenshots/android-tablet-10/*.png screenshots/store/android/tablet-10/
 cp screenshots/iphone-65/*.png screenshots/store/ios/iphone-6.5/
 ```
+
+## Upload Android Screenshots to Play Store
+
+GitHub Actions now uploads curated Android screenshots automatically on pushes to `main` that touch `screenshots/store/android/**`, or you can trigger the workflow manually.
+
+Required secret:
+
+- `PLAYSTORE_SERVICE_ACCOUNT_JSON`: raw JSON content for a Google Play service account with Play Console release access.
+
+Optional local upload:
+
+```bash
+bundle install
+bundle exec fastlane android upload_screenshots
+```
+
+The Fastlane lane copies screenshots from `screenshots/store/android/{phone,tablet-7,tablet-10}` into the Play Store metadata structure and uploads only screenshots.
 
 ## Tips
 
