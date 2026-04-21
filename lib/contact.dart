@@ -130,7 +130,7 @@ class _ContactScreenState extends State<ContactScreen> {
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
           DropdownButtonFormField<String>(
-            value: _reason,
+            initialValue: _reason,
             decoration: const InputDecoration(
               labelText: 'Reason',
               border: OutlineInputBorder(),
