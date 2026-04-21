@@ -1,11 +1,11 @@
 Roorkee.org is the community platform for everyone who has lived in, studied in, or simply loves the historic town of Roorkee, Uttarakhand.
 
-Share posts, photos, and memories with fellow residents. Browse community news, local weather, and upcoming events — all in one place.
+Share posts, photos, and memories with fellow residents. Browse community news, local weather, and upcoming events in one place.
 
 Features:
-• Community posts with text and photos
-• Photo albums
-• Local weather forecast
-• Community events and holidays
-• News about Roorkee
-• Secure sign-in with Google or Apple
+- Community posts with text and photos
+- Photo albums
+- Local weather forecast
+- Community events and holidays
+- News about Roorkee
+- Secure sign-in with Google or Apple

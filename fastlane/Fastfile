@@ -1,5 +1,13 @@
 require 'google/apis/androidpublisher_v3'
 require 'googleauth'
+require 'json'
+
+def format_google_api_error(error)
+  details = []
+  details << "status=#{error.status_code}" if error.respond_to?(:status_code) && error.status_code
+  details << "body=#{error.body}" if error.respond_to?(:body) && error.body && !error.body.to_s.strip.empty?
+  details.empty? ? error.message : "#{error.message} (#{details.join(', ')})"
+end
 
 default_platform(:android)
 
@@ -9,12 +17,13 @@ platform :android do
     repo_root = File.expand_path("..", __dir__)
     metadata_path = File.join(repo_root, "fastlane", "metadata", "android")
     screenshots_source = File.join(repo_root, "screenshots", "store", "android")
+    images_path = File.join(metadata_path, "en-US", "images")
 
     phone_target = File.join(metadata_path, "en-US", "images", "phoneScreenshots")
     seven_inch_target = File.join(metadata_path, "en-US", "images", "sevenInchScreenshots")
     ten_inch_target = File.join(metadata_path, "en-US", "images", "tenInchScreenshots")
 
-    FileUtils.rm_rf(metadata_path)
+    FileUtils.rm_rf(images_path)
     FileUtils.mkdir_p(phone_target)
     FileUtils.mkdir_p(seven_inch_target)
     FileUtils.mkdir_p(ten_inch_target)
@@ -57,7 +66,7 @@ platform :android do
       pngs = Dir.glob(File.join(folder, "*.png")).sort
       next if pngs.empty?
 
-      service.delete_all_edit_images(package_name, edit.id, "en-US", image_type)
+      service.deleteall_edit_image(package_name, edit.id, "en-US", image_type)
       UI.message("Cleared existing #{image_type}")
 
       pngs.each do |path|
@@ -74,12 +83,13 @@ platform :android do
     UI.success("Android screenshots uploaded and committed to Google Play")
   end
 
-  desc "Upload store listing metadata (title, description, changelogs) to Google Play"
+  desc "Upload store listing metadata (title and descriptions) to Google Play"
   lane :upload_metadata do
     repo_root = File.expand_path("..", __dir__)
     metadata_path = File.join(repo_root, "fastlane", "metadata", "android")
+    version_code = ENV["PLAY_STORE_VERSION_CODE"]
 
-    upload_to_play_store(
+    upload_options = {
       json_key: ENV.fetch("SUPPLY_JSON_KEY"),
       package_name: ENV.fetch("ANDROID_PACKAGE_NAME", "org.roorkee"),
       track: ENV.fetch("PLAY_STORE_TRACK", "internal"),
@@ -88,12 +98,80 @@ platform :android do
       skip_upload_apk: true,
       skip_upload_aab: true,
       skip_upload_metadata: false,
-      skip_upload_changelogs: false,
+      skip_upload_changelogs: version_code.to_s.empty?,
       skip_upload_images: true,
       skip_upload_screenshots: true
+    }
+
+    upload_options[:version_code] = version_code.to_i unless version_code.to_s.empty?
+
+    upload_to_play_store(**upload_options)
+    UI.success("Android store listing metadata uploaded to Google Play")
+  end
+
+  desc "Diagnose Google Play app state for release and metadata operations"
+  lane :diagnose_play_state do
+    package_name = ENV.fetch("ANDROID_PACKAGE_NAME", "org.roorkee")
+    json_key_path = ENV.fetch("SUPPLY_JSON_KEY")
+
+    Pub = Google::Apis::AndroidpublisherV3
+    service = Pub::AndroidPublisherService.new
+    service.authorization = Google::Auth::ServiceAccountCredentials.make_creds(
+      json_key_io: File.open(json_key_path),
+      scope: Pub::AUTH_ANDROIDPUBLISHER
     )
 
-    UI.success("Android store listing metadata uploaded to Google Play")
+    edit = nil
+    begin
+      edit = service.insert_edit(package_name)
+      UI.message("Opened diagnostic edit #{edit.id}")
+
+      begin
+        detail = service.get_edit_detail(package_name, edit.id)
+        UI.message("Edit detail:\n#{JSON.pretty_generate(detail.to_h)}")
+      rescue Google::Apis::ClientError => error
+        UI.important("Could not read edit detail: #{format_google_api_error(error)}")
+      end
+
+      begin
+        tracks = service.list_edit_tracks(package_name, edit.id)
+        UI.message("Edit tracks:\n#{JSON.pretty_generate(tracks.to_h)}")
+      rescue Google::Apis::ClientError => error
+        UI.important("Could not read edit tracks: #{format_google_api_error(error)}")
+      end
+
+      begin
+        bundles = service.list_edit_bundles(package_name, edit.id)
+        UI.message("Edit bundles:\n#{JSON.pretty_generate(bundles.to_h)}")
+      rescue Google::Apis::ClientError => error
+        UI.important("Could not read edit bundles: #{format_google_api_error(error)}")
+      end
+
+      begin
+        listings = service.list_edit_listings(package_name, edit.id)
+        UI.message("Edit listings:\n#{JSON.pretty_generate(listings.to_h)}")
+      rescue Google::Apis::ClientError => error
+        UI.important("Could not read edit listings: #{format_google_api_error(error)}")
+      end
+
+      begin
+        service.validate_edit(package_name, edit.id)
+        UI.success("validate_edit succeeded")
+      rescue Google::Apis::ClientError => error
+        UI.important("validate_edit failed: #{format_google_api_error(error)}")
+      end
+    ensure
+      if edit
+        begin
+          service.delete_edit(package_name, edit.id)
+          UI.message("Deleted diagnostic edit #{edit.id}")
+        rescue Google::Apis::ClientError => error
+          UI.important("Could not delete diagnostic edit #{edit.id}: #{format_google_api_error(error)}")
+        end
+      end
+    end
+
+    UI.success("Google Play diagnostics complete")
   end
 
   desc "Promote the internal track release to production"
@@ -102,13 +180,7 @@ platform :android do
       json_key: ENV.fetch("SUPPLY_JSON_KEY"),
       package_name: ENV.fetch("ANDROID_PACKAGE_NAME", "org.roorkee"),
       track: "internal",
-      track_promote_to: "production",
-      skip_upload_apk: true,
-      skip_upload_aab: true,
-      skip_upload_metadata: true,
-      skip_upload_changelogs: true,
-      skip_upload_images: true,
-      skip_upload_screenshots: true
+      release_status: "draft"
     )
 
     UI.success("Android release promoted to production on Google Play")
