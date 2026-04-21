@@ -1,3 +1,6 @@
+require 'google/apis/androidpublisher_v3'
+require 'googleauth'
+
 default_platform(:android)
 
 platform :android do
@@ -30,20 +33,45 @@ platform :android do
     UI.message("Copied #{tablet7_screenshots.length} 7-inch tablet screenshots")
     UI.message("Copied #{tablet10_screenshots.length} 10-inch tablet screenshots")
 
-    upload_to_play_store(
-      json_key: ENV.fetch("SUPPLY_JSON_KEY"),
-      package_name: ENV.fetch("ANDROID_PACKAGE_NAME", "org.roorkee"),
-      metadata_path: metadata_path,
-      skip_upload_apk: true,
-      skip_upload_aab: true,
-      skip_upload_metadata: true,
-      skip_upload_changelogs: true,
-      skip_upload_images: true,
-      skip_upload_screenshots: false,
-      sync_image_upload: true
+    # Use the Play Developer API directly to avoid supply's mandatory
+    # edits.tracks.update call, which always creates a release and fails
+    # on draft apps regardless of the release_status parameter.
+    package_name  = ENV.fetch("ANDROID_PACKAGE_NAME", "org.roorkee")
+    json_key_path = ENV.fetch("SUPPLY_JSON_KEY")
+
+    Pub = Google::Apis::AndroidpublisherV3
+    service = Pub::AndroidPublisherService.new
+    service.authorization = Google::Auth::ServiceAccountCredentials.make_creds(
+      json_key_io: File.open(json_key_path),
+      scope: Pub::AUTH_ANDROIDPUBLISHER
     )
 
-    UI.success("Android screenshots uploaded to Google Play")
+    edit = service.insert_edit(package_name)
+    UI.message("Opened Play Store edit #{edit.id}")
+
+    {
+      "phoneScreenshots"     => phone_target,
+      "sevenInchScreenshots" => seven_inch_target,
+      "tenInchScreenshots"   => ten_inch_target,
+    }.each do |image_type, folder|
+      pngs = Dir.glob(File.join(folder, "*.png")).sort
+      next if pngs.empty?
+
+      service.delete_all_edit_images(package_name, edit.id, "en-US", image_type)
+      UI.message("Cleared existing #{image_type}")
+
+      pngs.each do |path|
+        service.upload_edit_image(
+          package_name, edit.id, "en-US", image_type,
+          upload_source: path,
+          content_type: "image/png"
+        )
+        UI.message("  ↑ #{File.basename(path)}")
+      end
+    end
+
+    service.commit_edit(package_name, edit.id)
+    UI.success("Android screenshots uploaded and committed to Google Play")
   end
 
   desc "Upload store listing metadata (title, description, changelogs) to Google Play"
