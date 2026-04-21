@@ -2,10 +2,10 @@ import 'dart:convert';
 import 'dart:math';
 
 import 'models.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:crypto/crypto.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:google_sign_in/google_sign_in.dart';
-import 'package:firebase_database/firebase_database.dart';
 import 'package:flutter/foundation.dart';
 import 'package:rxdart/rxdart.dart';
 import 'package:sign_in_with_apple/sign_in_with_apple.dart';
@@ -208,11 +208,10 @@ class AuthService {
   }
 
   void updateUserData(User user) async {
-    final db = FirebaseDatabase.instance.ref();
-    final userRef = db.child('users').child(user.uid);
-    // Use update() with only non-null values so re-logins never overwrite
-    // a previously stored name/photo with null (e.g. Apple Sign-In).
+    // Write user profile to the Firestore `users` collection so it is
+    // readable by the web app (rke-nextjs queries users/{uid} by `id` field).
     final data = <String, dynamic>{
+      'id': user.uid,
       'lastSeen': DateTime.now().toIso8601String(),
     };
     if (user.email != null) data['email'] = user.email;
@@ -220,9 +219,12 @@ class AuthService {
       data['name'] = user.displayName;
     }
     if (user.photoURL != null && user.photoURL!.isNotEmpty) {
-      data['photoURL'] = user.photoURL;
+      data['profilePic'] = user.photoURL;
     }
-    await userRef.update(data);
+    await FirebaseFirestore.instance
+        .collection('users')
+        .doc(user.uid)
+        .set(data, SetOptions(merge: true));
   }
 
   Future<String> signOut() async {

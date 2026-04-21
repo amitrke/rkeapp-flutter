@@ -1,3 +1,5 @@
+import 'contact.dart';
+import 'create_post.dart';
 import 'gallery.dart';
 import 'home.dart';
 import 'models.dart';
@@ -15,17 +17,23 @@ import 'dart:async';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
-  final FirebaseApp _ = await Firebase.initializeApp(
-    options: const FirebaseOptions(
-      apiKey: kIsWeb ? 'AIzaSyAmDbGMOQoxr8LT_RP1O2DJqbHD40dj1Kg' : 'AIzaSyDd535g7OeDtyKiyIJ1hOlKt2xcgDSAnSE',
-      appId: kIsWeb ? '1:473096260334:web:bc48f4e8eafe7c02a1c1ff' : '1:473096260334:ios:9663975b0f5208a0a1c1ff',
-      messagingSenderId: '473096260334',
-      projectId: 'rkeorg',
-      authDomain: 'rkeorg.firebaseapp.com',
-      databaseURL: 'https://rkeorg-default-rtdb.firebaseio.com',
-      storageBucket: 'rkeorg.appspot.com',
-    ),
-  );
+  if (Firebase.apps.isEmpty) {
+    if (kIsWeb) {
+      await Firebase.initializeApp(
+        options: const FirebaseOptions(
+          apiKey: 'AIzaSyAmDbGMOQoxr8LT_RP1O2DJqbHD40dj1Kg',
+          appId: '1:473096260334:web:bc48f4e8eafe7c02a1c1ff',
+          messagingSenderId: '473096260334',
+          projectId: 'rkeorg',
+          authDomain: 'rkeorg.firebaseapp.com',
+          databaseURL: 'https://rkeorg-default-rtdb.firebaseio.com',
+          storageBucket: 'rkeorg.appspot.com',
+        ),
+      );
+    } else {
+      await Firebase.initializeApp();
+    }
+  }
 
   if (!kIsWeb) {
     await FirebaseAppCheck.instance.activate(
@@ -74,7 +82,7 @@ class _MyStatefulWidgetState extends State<MyStatefulWidget> {
 
   static const List<String> _pageTitles = <String>[
     'Home',
-    'My Posts',
+    'Account',
     'Gallery',
     'Weather',
   ];
@@ -238,7 +246,7 @@ class _MyStatefulWidgetState extends State<MyStatefulWidget> {
         },
       );
     } else if (index == 1) {
-      return const MyPostsWidget();
+      return const MyAccountScreen();
     } else if (index == 2) {
       return const PhotoGalleryScreen();
     } else {
@@ -267,7 +275,7 @@ class _MyStatefulWidgetState extends State<MyStatefulWidget> {
                 context: context,
                 index: 1,
                 icon: Icons.account_box,
-                title: 'My Posts',
+                title: 'Account',
               ),
               _buildDrawerItem(
                 context: context,
@@ -282,6 +290,20 @@ class _MyStatefulWidgetState extends State<MyStatefulWidget> {
                 title: 'Weather',
               ),
               const Divider(),
+              ListTile(
+                leading: const Icon(Icons.mail_outline),
+                title: const Text('Contact'),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(10),
+                ),
+                contentPadding: const EdgeInsets.symmetric(horizontal: 20),
+                onTap: () {
+                  Navigator.of(context).pop();
+                  Navigator.of(context).push(
+                    MaterialPageRoute(builder: (_) => const ContactScreen()),
+                  );
+                },
+              ),
               ListTile(
                 leading: Icon(
                   user.uid.isNotEmpty ? Icons.logout : Icons.login,
@@ -300,9 +322,13 @@ class _MyStatefulWidgetState extends State<MyStatefulWidget> {
       body: navigate(context, _selectedIndex),
       floatingActionButton: _selectedIndex == 1 && user.uid != ''
           ? FloatingActionButton(
-              onPressed: () => MyPostsWidget.filePicker(context, user),
-              tooltip: 'Add Photo',
-              child: const Icon(Icons.add),
+              onPressed: () => Navigator.of(context).push(
+                MaterialPageRoute(
+                  builder: (_) => CreatePostScreen(userId: user.uid),
+                ),
+              ),
+              tooltip: 'New Post',
+              child: const Icon(Icons.edit),
             )
           : null,
     );

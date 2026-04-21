@@ -1,113 +1,605 @@
-import 'dart:io';
+import 'dart:async';
 
 import 'auth.dart';
+import 'create_album.dart';
+import 'create_post.dart';
 import 'models.dart';
-import 'package:file_picker/file_picker.dart';
-import 'package:firebase_database/firebase_database.dart';
-import 'package:firebase_storage/firebase_storage.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
-import 'package:path/path.dart' as p;
-import 'package:image/image.dart' as Img;
 
-class MyPostsWidget extends StatelessWidget {
-  const MyPostsWidget({super.key});
+/// The Account tab — shows profile info, the user's own posts and albums
+/// (with moderation status badges), and unread notifications.
+class MyAccountScreen extends StatefulWidget {
+  const MyAccountScreen({super.key});
+
+  @override
+  State<MyAccountScreen> createState() => _MyAccountScreenState();
+}
+
+class _MyAccountScreenState extends State<MyAccountScreen>
+    with SingleTickerProviderStateMixin {
+  late TabController _tabController;
+
+  @override
+  void initState() {
+    super.initState();
+    _tabController = TabController(length: 3, vsync: this);
+  }
+
+  @override
+  void dispose() {
+    _tabController.dispose();
+    super.dispose();
+  }
 
   @override
   Widget build(BuildContext context) {
-    final rkeUser = Provider.of<RkeUser>(context); // gets the firebase user
+    final user = Provider.of<RkeUser>(context);
 
-    return SingleChildScrollView(
-      padding: const EdgeInsets.all(20),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: <Widget>[
-          firstLine(rkeUser),
-          const SizedBox(height: 12),
-          loginLogoutButton(rkeUser)
+    if (user.uid.isEmpty) {
+      return _buildSignedOut(context);
+    }
+
+    return Column(
+      children: [
+        _ProfileHeader(user: user),
+        TabBar(
+          controller: _tabController,
+          labelColor: Colors.blueAccent,
+          unselectedLabelColor: Colors.grey,
+          tabs: const [
+            Tab(icon: Icon(Icons.article_outlined), text: 'Posts'),
+            Tab(icon: Icon(Icons.photo_album_outlined), text: 'Albums'),
+            Tab(icon: Icon(Icons.notifications_outlined), text: 'Alerts'),
+          ],
+        ),
+        Expanded(
+          child: TabBarView(
+            controller: _tabController,
+            children: [
+              _MyPostsTab(userId: user.uid),
+              _MyAlbumsTab(userId: user.uid),
+              _NotificationsTab(userId: user.uid),
+            ],
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildSignedOut(BuildContext context) {
+    return Center(
+      child: Padding(
+        padding: const EdgeInsets.all(32),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const Icon(Icons.person_outline, size: 64, color: Colors.grey),
+            const SizedBox(height: 16),
+            const Text(
+              'Sign in to manage your posts and albums',
+              textAlign: TextAlign.center,
+              style: TextStyle(fontSize: 16, color: Colors.grey),
+            ),
+            const SizedBox(height: 24),
+            ElevatedButton.icon(
+              icon: const Icon(Icons.login),
+              label: const Text('Sign In'),
+              onPressed: () => authService.googleSignIn(),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+// ─── Profile header ───────────────────────────────────────────────────────────
+
+class _ProfileHeader extends StatelessWidget {
+  final RkeUser user;
+  const _ProfileHeader({required this.user});
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      color: Colors.blueAccent,
+      padding: const EdgeInsets.fromLTRB(16, 16, 16, 12),
+      child: Row(
+        children: [
+          CircleAvatar(
+            radius: 28,
+            backgroundImage: user.photoURL.isNotEmpty
+                ? NetworkImage(user.photoURL)
+                : null,
+            backgroundColor: Colors.white,
+            child: user.photoURL.isEmpty
+                ? const Icon(Icons.person, color: Colors.blueAccent, size: 30)
+                : null,
+          ),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  user.name.isNotEmpty ? user.name : 'User',
+                  style: const TextStyle(
+                    color: Colors.white,
+                    fontSize: 18,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+                if (user.email.isNotEmpty)
+                  Text(
+                    user.email,
+                    style: const TextStyle(color: Colors.white70, fontSize: 13),
+                  ),
+              ],
+            ),
+          ),
+          IconButton(
+            icon: const Icon(Icons.logout, color: Colors.white70),
+            tooltip: 'Sign out',
+            onPressed: () => authService.signOut(),
+          ),
         ],
       ),
     );
   }
+}
 
-  Widget firstLine(RkeUser user) {
-    if (user.uid != "") {
-      return Text('Hi ${user.name}!');
-    } else {
-      return Text('Please login !');
+// ─── My Posts tab ─────────────────────────────────────────────────────────────
+
+class _MyPostsTab extends StatelessWidget {
+  final String userId;
+  const _MyPostsTab({required this.userId});
+
+  @override
+  Widget build(BuildContext context) {
+    return StreamBuilder<QuerySnapshot>(
+      stream: FirebaseFirestore.instance
+          .collection('posts')
+          .where('userId', isEqualTo: userId)
+          .snapshots(),
+      builder: (context, snap) {
+        if (snap.connectionState == ConnectionState.waiting) {
+          return const Center(child: CircularProgressIndicator());
+        }
+
+        if (snap.hasError) {
+          return const _EmptyState(
+            icon: Icons.error_outline,
+            message: 'Unable to load your posts right now.',
+          );
+        }
+
+        final docs = snap.data?.docs ?? [];
+        if (docs.isEmpty) {
+          return const _EmptyState(
+            icon: Icons.article_outlined,
+            message: 'No posts yet.\nTap + to create your first post.',
+          );
+        }
+
+        final posts = docs
+            .map((d) =>
+                MyUserPost.fromDoc(d.id, d.data() as Map<String, dynamic>))
+            .toList();
+        posts.sort((a, b) => b.updateDate.compareTo(a.updateDate));
+
+        return ListView.separated(
+          padding: const EdgeInsets.all(12),
+          itemCount: posts.length,
+          separatorBuilder: (_, __) => const SizedBox(height: 8),
+          itemBuilder: (context, i) =>
+              _PostCard(post: posts[i], userId: userId),
+        );
+      },
+    );
+  }
+}
+
+class _PostCard extends StatelessWidget {
+  final MyUserPost post;
+  final String userId;
+  const _PostCard({required this.post, required this.userId});
+
+  @override
+  Widget build(BuildContext context) {
+    return Card(
+      child: ListTile(
+        contentPadding:
+            const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+        title: Text(
+          post.title.isNotEmpty ? post.title : '(Untitled)',
+          maxLines: 1,
+          overflow: TextOverflow.ellipsis,
+        ),
+        subtitle: Row(
+          children: [
+            _CategoryChip(post.category),
+            const SizedBox(width: 6),
+            _StatusBadge(post.status),
+          ],
+        ),
+        trailing: IconButton(
+          icon: const Icon(Icons.edit_outlined),
+          tooltip: 'Edit',
+          onPressed: () => Navigator.of(context).push(
+            MaterialPageRoute(
+              builder: (_) =>
+                  CreatePostScreen(postId: post.id, userId: userId),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+// ─── My Albums tab ────────────────────────────────────────────────────────────
+
+class _MyAlbumsTab extends StatelessWidget {
+  final String userId;
+  const _MyAlbumsTab({required this.userId});
+
+  @override
+  Widget build(BuildContext context) {
+    return StreamBuilder<QuerySnapshot>(
+      stream: FirebaseFirestore.instance
+          .collection('albums')
+          .where('userId', isEqualTo: userId)
+          .snapshots(),
+      builder: (context, snap) {
+        if (snap.connectionState == ConnectionState.waiting) {
+          return const Center(child: CircularProgressIndicator());
+        }
+
+        if (snap.hasError) {
+          return const _EmptyState(
+            icon: Icons.error_outline,
+            message: 'Unable to load your albums right now.',
+          );
+        }
+
+        final docs = snap.data?.docs ?? [];
+        if (docs.isEmpty) {
+          return const _EmptyState(
+            icon: Icons.photo_album_outlined,
+            message: 'No albums yet.\nCreate your first album!',
+          );
+        }
+
+        final albums = docs
+            .map((d) =>
+                MyUserAlbum.fromDoc(d.id, d.data() as Map<String, dynamic>))
+            .toList();
+        albums.sort((a, b) => b.updateDate.compareTo(a.updateDate));
+
+        return ListView.separated(
+          padding: const EdgeInsets.all(12),
+          itemCount: albums.length,
+          separatorBuilder: (_, __) => const SizedBox(height: 8),
+          itemBuilder: (context, i) =>
+              _AlbumCard(album: albums[i], userId: userId),
+        );
+      },
+    );
+  }
+}
+
+class _AlbumCard extends StatelessWidget {
+  final MyUserAlbum album;
+  final String userId;
+  const _AlbumCard({required this.album, required this.userId});
+
+  @override
+  Widget build(BuildContext context) {
+    return Card(
+      child: ListTile(
+        contentPadding:
+            const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+        leading: album.images.isNotEmpty
+            ? _AlbumThumb(userId: userId, filename: album.images.first)
+            : const Icon(Icons.photo_album_outlined, size: 40),
+        title: Text(
+          album.name.isNotEmpty ? album.name : '(Untitled)',
+          maxLines: 1,
+          overflow: TextOverflow.ellipsis,
+        ),
+        subtitle: Row(
+          children: [
+            Text(
+              '${album.images.length} photo${album.images.length == 1 ? "" : "s"}',
+              style: const TextStyle(fontSize: 12, color: Colors.blueGrey),
+            ),
+            const SizedBox(width: 6),
+            _StatusBadge(album.status),
+          ],
+        ),
+        trailing: IconButton(
+          icon: const Icon(Icons.edit_outlined),
+          tooltip: 'Edit',
+          onPressed: () => Navigator.of(context).push(
+            MaterialPageRoute(
+              builder: (_) =>
+                  CreateAlbumScreen(albumId: album.id, userId: userId),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _AlbumThumb extends StatefulWidget {
+  final String userId;
+  final String filename;
+  const _AlbumThumb({required this.userId, required this.filename});
+
+  @override
+  State<_AlbumThumb> createState() => _AlbumThumbState();
+}
+
+class _AlbumThumbState extends State<_AlbumThumb> {
+  String? _url;
+
+  @override
+  void initState() {
+    super.initState();
+    _buildUrl();
+  }
+
+  void _buildUrl() {
+    final lastDot = widget.filename.lastIndexOf('.');
+    final base = lastDot != -1
+        ? widget.filename.substring(0, lastDot)
+        : widget.filename;
+    final ext =
+        lastDot != -1 ? widget.filename.substring(lastDot + 1) : '';
+    final path = 'users/${widget.userId}/images/${base}_200x200.$ext';
+    final encodedPath =
+        path.split('/').map(Uri.encodeComponent).join('/');
+    setState(() {
+      _url =
+          'https://storage.googleapis.com/rkeorg.appspot.com/$encodedPath';
+    });
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    if (_url == null) return const SizedBox(width: 40, height: 40);
+    return ClipRRect(
+      borderRadius: BorderRadius.circular(4),
+      child: Image.network(
+        _url!,
+        width: 40,
+        height: 40,
+        fit: BoxFit.cover,
+        errorBuilder: (_, __, ___) =>
+            const Icon(Icons.broken_image_outlined, size: 40),
+      ),
+    );
+  }
+}
+
+// ─── Notifications tab ────────────────────────────────────────────────────────
+
+class _NotificationsTab extends StatelessWidget {
+  final String userId;
+  const _NotificationsTab({required this.userId});
+
+  Future<void> _markRead(String notifId) async {
+    await FirebaseFirestore.instance
+        .collection('notifications')
+        .doc(notifId)
+        .update({'read': true});
+  }
+
+  Future<void> _markAllRead(List<String> ids) async {
+    final batch = FirebaseFirestore.instance.batch();
+    for (final id in ids) {
+      batch.update(
+          FirebaseFirestore.instance.collection('notifications').doc(id),
+          {'read': true});
     }
+    await batch.commit();
   }
 
-  Widget loginLogoutButton(RkeUser user) {
-    if (user.uid != "") {
-      return MaterialButton(
-        onPressed: () => authService.signOut(),
-        color: Colors.red,
-        textColor: Colors.white,
-        child: Text('Signout'),
-      );
-    } else {
-      return MaterialButton(
-        onPressed: () => authService.googleSignIn(),
-        color: Colors.white,
-        textColor: Colors.black,
-        child: Text('Login with Google'),
-      );
+  @override
+  Widget build(BuildContext context) {
+    return StreamBuilder<QuerySnapshot>(
+      stream: FirebaseFirestore.instance
+          .collection('notifications')
+          .where('userId', isEqualTo: userId)
+          .where('read', isEqualTo: false)
+          .orderBy('createdAt', descending: true)
+          .snapshots(),
+      builder: (context, snap) {
+        if (snap.connectionState == ConnectionState.waiting) {
+          return const Center(child: CircularProgressIndicator());
+        }
+
+        final docs = snap.data?.docs ?? [];
+        if (docs.isEmpty) {
+          return const _EmptyState(
+            icon: Icons.notifications_none_outlined,
+            message: 'No new notifications.',
+          );
+        }
+
+        final notifs = docs
+            .map((d) => UserNotification.fromDoc(
+                d.id, d.data() as Map<String, dynamic>))
+            .toList();
+
+        return Column(
+          children: [
+            Padding(
+              padding:
+                  const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Text('${notifs.length} unread',
+                      style: const TextStyle(color: Colors.grey)),
+                  TextButton(
+                    onPressed: () =>
+                        _markAllRead(notifs.map((n) => n.id).toList()),
+                    child: const Text('Mark all read'),
+                  ),
+                ],
+              ),
+            ),
+            Expanded(
+              child: ListView.separated(
+                padding: const EdgeInsets.fromLTRB(12, 0, 12, 12),
+                itemCount: notifs.length,
+                separatorBuilder: (_, __) => const SizedBox(height: 8),
+                itemBuilder: (context, i) => _NotifCard(
+                    notif: notifs[i],
+                    onRead: () => _markRead(notifs[i].id)),
+              ),
+            ),
+          ],
+        );
+      },
+    );
+  }
+}
+
+class _NotifCard extends StatelessWidget {
+  final UserNotification notif;
+  final VoidCallback onRead;
+  const _NotifCard({required this.notif, required this.onRead});
+
+  @override
+  Widget build(BuildContext context) {
+    final isApproved = notif.type == 'approved';
+    return Card(
+      child: ListTile(
+        leading: CircleAvatar(
+          backgroundColor:
+              isApproved ? Colors.green.shade100 : Colors.red.shade100,
+          child: Icon(
+            isApproved
+                ? Icons.check_circle_outline
+                : Icons.cancel_outlined,
+            color: isApproved ? Colors.green : Colors.red,
+          ),
+        ),
+        title: Text(
+          isApproved
+              ? "${notif.itemType == 'post' ? 'Post' : 'Album'} approved"
+              : "${notif.itemType == 'post' ? 'Post' : 'Album'} not approved",
+          style: const TextStyle(fontWeight: FontWeight.bold),
+        ),
+        subtitle: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              '"${notif.itemTitle}"',
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+            ),
+            if (!isApproved && notif.rejectionReason != null)
+              Text(
+                'Reason: ${notif.rejectionReason}',
+                style:
+                    const TextStyle(color: Colors.red, fontSize: 12),
+                maxLines: 2,
+              ),
+          ],
+        ),
+        isThreeLine: !isApproved && notif.rejectionReason != null,
+        trailing: TextButton(
+          onPressed: onRead,
+          child: const Text('Dismiss'),
+        ),
+      ),
+    );
+  }
+}
+
+// ─── Shared small widgets ─────────────────────────────────────────────────────
+
+class _StatusBadge extends StatelessWidget {
+  final String status;
+  const _StatusBadge(this.status);
+
+  @override
+  Widget build(BuildContext context) {
+    Color color;
+    String label;
+    switch (status) {
+      case 'published':
+        color = Colors.green;
+        label = 'Published';
+        break;
+      case 'pending':
+        color = Colors.orange;
+        label = 'Pending';
+        break;
+      default:
+        color = Colors.grey;
+        label = 'Draft';
     }
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+      decoration: BoxDecoration(
+        color: color.withAlpha(30),
+        border: Border.all(color: color, width: 1),
+        borderRadius: BorderRadius.circular(4),
+      ),
+      child: Text(
+        label,
+        style: TextStyle(
+            color: color, fontSize: 11, fontWeight: FontWeight.bold),
+      ),
+    );
   }
+}
 
-  static Future<void> filePicker(BuildContext context, RkeUser rkeUser) async {
-    try {
-      if (rkeUser.uid == "") {
-        const snackBar = SnackBar(content: Text("Please login first"));
-        ScaffoldMessenger.of(context).showSnackBar(snackBar);
-        return;
-      }
+class _CategoryChip extends StatelessWidget {
+  final String category;
+  const _CategoryChip(this.category);
 
-      final result = await FilePicker.platform.pickFiles(type: FileType.image);
-      if (result == null || result.files.single.path == null) return;
-      final file = File(result.files.single.path!);
-      String fileUrl =
-          await _uploadFile(file, p.basename(file.path), rkeUser.uid);
-      String uploadStatus = "Failed to upload file !";
-      if (fileUrl != "") {
-        uploadStatus = "File uploaded successfully !";
-      }
-      final snackBar = SnackBar(content: Text(uploadStatus));
-      ScaffoldMessenger.of(context).showSnackBar(snackBar);
-    } catch (e) {
-      print(e);
-      final snackBar = SnackBar(content: Text("Something went wrong :("));
-      ScaffoldMessenger.of(context).showSnackBar(snackBar);
-    }
+  @override
+  Widget build(BuildContext context) {
+    return Text(
+      category.isNotEmpty
+          ? category[0].toUpperCase() + category.substring(1)
+          : '',
+      style: const TextStyle(fontSize: 12, color: Colors.blueGrey),
+    );
   }
+}
 
-  static Future<String> _uploadFile(File file, String filename, String uid) async {
-    final FirebaseStorage storage =
-      FirebaseStorage.instanceFor(bucket: 'gs://rkeorg.appspot.com');
-    final Reference storageReference =
-        storage.ref().child("users/$uid/$filename");
-    final Img.Image? imageTemp = Img.decodeImage(file.readAsBytesSync());
-    if (imageTemp == null) return "";
-    final Img.Image resizedImg = Img.copyResize(imageTemp, height: 768);
-    var compressedImage = new File(file.path)
-      ..writeAsBytesSync(Img.encodeJpg(resizedImg, quality: 85));
-    final UploadTask uploadTask = storageReference.putFile(compressedImage);
-    final TaskSnapshot snapshot = await uploadTask.whenComplete(() {});
-    final String url = await snapshot.ref.getDownloadURL();
-    await updateFileDbEntry(
-        uid, filename, snapshot.ref.hashCode, snapshot.ref.fullPath);
-    print("URL is $url");
-    return url;
-  }
+class _EmptyState extends StatelessWidget {
+  final IconData icon;
+  final String message;
+  const _EmptyState({required this.icon, required this.message});
 
-  static Future<void> updateFileDbEntry(
-      String uid, String filename, int hashCode, String path) async {
-    final db = FirebaseDatabase.instance.ref();
-    await db
-        .child('album')
-        .child(uid)
-        .child(hashCode.toString())
-        .set({'path': path, 'filename': filename});
+  @override
+  Widget build(BuildContext context) {
+    return Center(
+      child: Padding(
+        padding: const EdgeInsets.all(32),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(icon, size: 56, color: Colors.grey.shade400),
+            const SizedBox(height: 12),
+            Text(
+              message,
+              textAlign: TextAlign.center,
+              style: TextStyle(color: Colors.grey.shade600),
+            ),
+          ],
+        ),
+      ),
+    );
   }
 }
