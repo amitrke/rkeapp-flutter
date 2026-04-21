@@ -1,0 +1,33 @@
+name: Submit iOS for App Store Review
+
+on:
+  workflow_dispatch:
+    inputs:
+      confirm:
+        description: 'Type "submit" to confirm App Store review submission'
+        required: true
+        default: ''
+
+jobs:
+  submit:
+    runs-on: macos-latest
+    environment: production
+    if: github.event.inputs.confirm == 'submit'
+    env:
+      IOS_APP_IDENTIFIER: org.roorkee
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Ruby
+        uses: ruby/setup-ruby@v1
+        with:
+          bundler-cache: true
+
+      - name: Submit latest build for review
+        run: bundle exec fastlane ios submit_for_review
+        env:
+          APP_STORE_CONNECT_KEY_ID: ${{ secrets.APP_STORE_CONNECT_KEY_ID }}
+          APP_STORE_CONNECT_ISSUER_ID: ${{ secrets.APP_STORE_CONNECT_ISSUER_ID }}
+          APP_STORE_CONNECT_API_KEY: ${{ secrets.APP_STORE_CONNECT_API_KEY }}

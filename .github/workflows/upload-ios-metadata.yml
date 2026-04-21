@@ -1,0 +1,30 @@
+name: Upload iOS Store Metadata
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'fastlane/metadata/ios/**'
+  workflow_dispatch:
+
+jobs:
+  upload-metadata:
+    runs-on: macos-latest
+    env:
+      IOS_APP_IDENTIFIER: org.roorkee
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Ruby
+        uses: ruby/setup-ruby@v1
+        with:
+          bundler-cache: true
+
+      - name: Upload metadata to App Store Connect
+        run: bundle exec fastlane ios upload_metadata
+        env:
+          APP_STORE_CONNECT_KEY_ID: ${{ secrets.APP_STORE_CONNECT_KEY_ID }}
+          APP_STORE_CONNECT_ISSUER_ID: ${{ secrets.APP_STORE_CONNECT_ISSUER_ID }}
+          APP_STORE_CONNECT_API_KEY: ${{ secrets.APP_STORE_CONNECT_API_KEY }}

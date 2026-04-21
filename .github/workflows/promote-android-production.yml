@@ -1,0 +1,39 @@
+name: Promote Android to Production
+
+on:
+  workflow_dispatch:
+    inputs:
+      confirm:
+        description: 'Type "promote" to confirm promotion to production'
+        required: true
+        default: ''
+
+jobs:
+  promote:
+    runs-on: ubuntu-latest
+    environment: production
+    if: github.event.inputs.confirm == 'promote'
+    env:
+      ANDROID_PACKAGE_NAME: org.roorkee
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Ruby
+        uses: ruby/setup-ruby@v1
+        with:
+          bundler-cache: true
+
+      - name: Write Play Store service account key
+        shell: bash
+        run: |
+          printf '%s' "${{ secrets.PLAYSTORE_SERVICE_ACCOUNT_JSON }}" > play_store_key.json
+          echo "SUPPLY_JSON_KEY=$(pwd)/play_store_key.json" >> "$GITHUB_ENV"
+
+      - name: Promote internal → production
+        run: bundle exec fastlane android promote_to_production
+
+      - name: Remove Play Store key
+        if: always()
+        run: rm -f play_store_key.json
