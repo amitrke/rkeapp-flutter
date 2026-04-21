@@ -1,0 +1,37 @@
+name: Upload Android Store Metadata
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'fastlane/metadata/android/**'
+  workflow_dispatch:
+
+jobs:
+  upload-metadata:
+    runs-on: ubuntu-latest
+    env:
+      ANDROID_PACKAGE_NAME: org.roorkee
+      PLAY_STORE_TRACK: internal
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Ruby
+        uses: ruby/setup-ruby@v1
+        with:
+          bundler-cache: true
+
+      - name: Write Play Store service account key
+        shell: bash
+        run: |
+          printf '%s' "${{ secrets.PLAYSTORE_SERVICE_ACCOUNT_JSON }}" > play_store_key.json
+          echo "SUPPLY_JSON_KEY=$(pwd)/play_store_key.json" >> "$GITHUB_ENV"
+
+      - name: Upload metadata to Google Play
+        run: bundle exec fastlane android upload_metadata
+
+      - name: Remove Play Store key
+        if: always()
+        run: rm -f play_store_key.json

@@ -34,6 +34,7 @@ platform :android do
       json_key: ENV.fetch("SUPPLY_JSON_KEY"),
       package_name: ENV.fetch("ANDROID_PACKAGE_NAME", "org.roorkee"),
       track: ENV.fetch("PLAY_STORE_TRACK", "internal"),
+      release_status: "draft",
       metadata_path: metadata_path,
       skip_upload_apk: true,
       skip_upload_aab: true,
@@ -47,6 +48,46 @@ platform :android do
     UI.success("Android screenshots uploaded to Google Play")
   end
 
+  desc "Upload store listing metadata (title, description, changelogs) to Google Play"
+  lane :upload_metadata do
+    repo_root = File.expand_path("..", __dir__)
+    metadata_path = File.join(repo_root, "fastlane", "metadata", "android")
+
+    upload_to_play_store(
+      json_key: ENV.fetch("SUPPLY_JSON_KEY"),
+      package_name: ENV.fetch("ANDROID_PACKAGE_NAME", "org.roorkee"),
+      track: ENV.fetch("PLAY_STORE_TRACK", "internal"),
+      release_status: "draft",
+      metadata_path: metadata_path,
+      skip_upload_apk: true,
+      skip_upload_aab: true,
+      skip_upload_metadata: false,
+      skip_upload_changelogs: false,
+      skip_upload_images: true,
+      skip_upload_screenshots: true
+    )
+
+    UI.success("Android store listing metadata uploaded to Google Play")
+  end
+
+  desc "Promote the internal track release to production"
+  lane :promote_to_production do
+    upload_to_play_store(
+      json_key: ENV.fetch("SUPPLY_JSON_KEY"),
+      package_name: ENV.fetch("ANDROID_PACKAGE_NAME", "org.roorkee"),
+      track: "internal",
+      track_promote_to: "production",
+      skip_upload_apk: true,
+      skip_upload_aab: true,
+      skip_upload_metadata: true,
+      skip_upload_changelogs: true,
+      skip_upload_images: true,
+      skip_upload_screenshots: true
+    )
+
+    UI.success("Android release promoted to production on Google Play")
+  end
+
   desc "Create curated Android screenshot folders"
   lane :prepare_screenshots do
     repo_root = File.expand_path("..", __dir__)
@@ -54,5 +95,113 @@ platform :android do
     FileUtils.mkdir_p(File.join(repo_root, "screenshots", "store", "android", "tablet-7"))
     FileUtils.mkdir_p(File.join(repo_root, "screenshots", "store", "android", "tablet-10"))
     UI.success("Prepared screenshots/store/android/{phone,tablet-7,tablet-10}")
+  end
+end
+
+platform :ios do
+  desc "Upload curated iOS screenshots to App Store Connect"
+  lane :upload_screenshots do
+    repo_root = File.expand_path("..", __dir__)
+    screenshots_source = File.join(repo_root, "screenshots", "store", "ios")
+    screenshots_dest = File.join(repo_root, "fastlane", "screenshots", "en-US")
+
+    FileUtils.rm_rf(File.join(repo_root, "fastlane", "screenshots"))
+    FileUtils.mkdir_p(screenshots_dest)
+
+    # Map our folder names to App Store Connect device type prefixes
+    device_map = {
+      "iphone-6.5" => "iPhone6.5",
+      "ipad-12.9"  => "iPadPro129"
+    }
+
+    device_map.each do |folder, prefix|
+      sources = Dir.glob(File.join(screenshots_source, folder, "*.png")).sort
+      UI.user_error!("No screenshots found in screenshots/store/ios/#{folder}") if folder == "iphone-6.5" && sources.empty?
+      sources.each_with_index do |path, idx|
+        dest_name = "#{prefix}-#{format('%02d', idx + 1)}.png"
+        FileUtils.cp(path, File.join(screenshots_dest, dest_name))
+      end
+      UI.message("Copied #{sources.length} #{folder} screenshots as #{prefix}-*.png")
+    end
+
+    api_key = app_store_connect_api_key(
+      key_id:      ENV.fetch("APP_STORE_CONNECT_KEY_ID"),
+      issuer_id:   ENV.fetch("APP_STORE_CONNECT_ISSUER_ID"),
+      key_content: ENV.fetch("APP_STORE_CONNECT_API_KEY"),
+      is_key_content_base64: true
+    )
+
+    upload_to_app_store(
+      api_key:              api_key,
+      app_identifier:       ENV.fetch("IOS_APP_IDENTIFIER", "org.roorkee"),
+      screenshots_path:     File.join(repo_root, "fastlane", "screenshots"),
+      skip_binary_upload:   true,
+      skip_metadata:        true,
+      overwrite_screenshots: true,
+      submit_for_review:    false,
+      force:                true
+    )
+
+    UI.success("iOS screenshots uploaded to App Store Connect")
+  end
+
+  desc "Upload store listing metadata (description, keywords, release notes) to App Store Connect"
+  lane :upload_metadata do
+    repo_root = File.expand_path("..", __dir__)
+
+    api_key = app_store_connect_api_key(
+      key_id:      ENV.fetch("APP_STORE_CONNECT_KEY_ID"),
+      issuer_id:   ENV.fetch("APP_STORE_CONNECT_ISSUER_ID"),
+      key_content: ENV.fetch("APP_STORE_CONNECT_API_KEY"),
+      is_key_content_base64: true
+    )
+
+    upload_to_app_store(
+      api_key:            api_key,
+      app_identifier:     ENV.fetch("IOS_APP_IDENTIFIER", "org.roorkee"),
+      metadata_path:      File.join(repo_root, "fastlane", "metadata", "ios"),
+      skip_binary_upload: true,
+      skip_screenshots:   true,
+      submit_for_review:  false,
+      force:              true
+    )
+
+    UI.success("iOS store listing metadata uploaded to App Store Connect")
+  end
+
+  desc "Submit the latest approved build for App Store review"
+  lane :submit_for_review do
+    api_key = app_store_connect_api_key(
+      key_id:      ENV.fetch("APP_STORE_CONNECT_KEY_ID"),
+      issuer_id:   ENV.fetch("APP_STORE_CONNECT_ISSUER_ID"),
+      key_content: ENV.fetch("APP_STORE_CONNECT_API_KEY"),
+      is_key_content_base64: true
+    )
+
+    upload_to_app_store(
+      api_key:            api_key,
+      app_identifier:     ENV.fetch("IOS_APP_IDENTIFIER", "org.roorkee"),
+      skip_binary_upload: true,
+      skip_screenshots:   true,
+      skip_metadata:      true,
+      submit_for_review:  true,
+      automatic_release:  false,
+      force:              true,
+      submission_information: {
+        add_id_info_uses_idfa:                   false,
+        export_compliance_uses_encryption:        false,
+        export_compliance_encryption_updated:     false
+      }
+    )
+
+    UI.success("iOS app submitted for App Store review")
+  end
+
+  desc "Create curated iOS screenshot folders"
+  lane :prepare_screenshots do
+    repo_root = File.expand_path("..", __dir__)
+    FileUtils.mkdir_p(File.join(repo_root, "screenshots", "store", "ios", "iphone-6.5"))
+    FileUtils.mkdir_p(File.join(repo_root, "screenshots", "store", "ios", "ipad-12.9"))
+    UI.success("Prepared screenshots/store/ios/{iphone-6.5,ipad-12.9}")
   end
 end

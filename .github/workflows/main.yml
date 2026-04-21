@@ -76,6 +76,14 @@ jobs:
             echo "keyAlias=$KEY_ALIAS"
           } > key.properties
 
+      - name: Bump version in pubspec.yaml
+        shell: bash
+        run: |
+          BUILD_NAME="${{ steps.version.outputs.build_name }}"
+          BUILD_NUMBER="${{ steps.version.outputs.build_number }}"
+          sed -i "s/^version:.*/version: ${BUILD_NAME}+${BUILD_NUMBER}/" pubspec.yaml
+          echo "pubspec.yaml version set to ${BUILD_NAME}+${BUILD_NUMBER}"
+
       - name: Install Flutter dependencies
         run: flutter pub get
 
