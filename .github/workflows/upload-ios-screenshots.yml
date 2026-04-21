@@ -2,13 +2,6 @@ name: Upload iOS Screenshots
 
 on:
   workflow_dispatch:
-  push:
-    branches:
-      - main
-    paths:
-      - 'screenshots/store/ios/**'
-      - 'fastlane/**'
-      - 'Gemfile'
 
 jobs:
   upload-ios-screenshots:

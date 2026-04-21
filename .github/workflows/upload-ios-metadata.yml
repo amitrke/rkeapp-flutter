@@ -1,10 +1,6 @@
 name: Upload iOS Store Metadata
 
 on:
-  push:
-    branches: [main]
-    paths:
-      - 'fastlane/metadata/ios/**'
   workflow_dispatch:
 
 jobs:
