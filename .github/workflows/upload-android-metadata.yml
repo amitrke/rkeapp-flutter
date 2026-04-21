@@ -1,10 +1,6 @@
 name: Upload Android Store Metadata
 
 on:
-  push:
-    branches: [main]
-    paths:
-      - 'fastlane/metadata/android/**'
   workflow_dispatch:
 
 jobs:
