@@ -15,6 +15,7 @@ jobs:
     runs-on: ubuntu-latest
     env:
       ANDROID_PACKAGE_NAME: org.roorkee
+      PLAY_STORE_TRACK: internal
 
     steps:
       - name: Checkout repository
