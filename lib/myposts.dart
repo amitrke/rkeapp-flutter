@@ -20,6 +20,7 @@ class MyAccountScreen extends StatefulWidget {
 class _MyAccountScreenState extends State<MyAccountScreen>
     with SingleTickerProviderStateMixin {
   late TabController _tabController;
+  bool _deletingAccount = false;
 
   @override
   void initState() {
@@ -43,7 +44,13 @@ class _MyAccountScreenState extends State<MyAccountScreen>
 
     return Column(
       children: [
-        _ProfileHeader(user: user),
+        _ProfileHeader(
+          user: user,
+          deletingAccount: _deletingAccount,
+          onDeleteAccount: _deletingAccount
+              ? null
+              : () => _confirmDeleteAccount(user),
+        ),
         TabBar(
           controller: _tabController,
           labelColor: Colors.blueAccent,
@@ -65,6 +72,49 @@ class _MyAccountScreenState extends State<MyAccountScreen>
           ),
         ),
       ],
+    );
+  }
+
+  Future<void> _confirmDeleteAccount(RkeUser user) async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        title: const Text('Delete account?'),
+        content: Text(
+          user.email.isNotEmpty
+              ? 'This permanently deletes $user.email, including your profile, posts, albums, notifications, and uploaded photos. This cannot be undone.'
+              : 'This permanently deletes your profile, posts, albums, notifications, and uploaded photos. This cannot be undone.',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(dialogContext).pop(false),
+            child: const Text('Cancel'),
+          ),
+          FilledButton(
+            style: FilledButton.styleFrom(backgroundColor: Colors.redAccent),
+            onPressed: () => Navigator.of(dialogContext).pop(true),
+            child: const Text('Delete'),
+          ),
+        ],
+      ),
+    );
+
+    if (confirmed != true || !mounted) {
+      return;
+    }
+
+    setState(() => _deletingAccount = true);
+    final result = await authService.deleteCurrentUserAccount();
+    if (!mounted) {
+      return;
+    }
+
+    setState(() => _deletingAccount = false);
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(result.message),
+        backgroundColor: result.deleted ? Colors.green : Colors.redAccent,
+      ),
     );
   }
 
@@ -99,50 +149,94 @@ class _MyAccountScreenState extends State<MyAccountScreen>
 
 class _ProfileHeader extends StatelessWidget {
   final RkeUser user;
-  const _ProfileHeader({required this.user});
+  final bool deletingAccount;
+  final VoidCallback? onDeleteAccount;
+
+  const _ProfileHeader({
+    required this.user,
+    required this.deletingAccount,
+    required this.onDeleteAccount,
+  });
 
   @override
   Widget build(BuildContext context) {
     return Container(
       color: Colors.blueAccent,
       padding: const EdgeInsets.fromLTRB(16, 16, 16, 12),
-      child: Row(
+      child: Column(
         children: [
-          CircleAvatar(
-            radius: 28,
-            backgroundImage: user.photoURL.isNotEmpty
-                ? NetworkImage(user.photoURL)
-                : null,
-            backgroundColor: Colors.white,
-            child: user.photoURL.isEmpty
-                ? const Icon(Icons.person, color: Colors.blueAccent, size: 30)
-                : null,
-          ),
-          const SizedBox(width: 12),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  user.name.isNotEmpty ? user.name : 'User',
-                  style: const TextStyle(
-                    color: Colors.white,
-                    fontSize: 18,
-                    fontWeight: FontWeight.bold,
-                  ),
+          Row(
+            children: [
+              CircleAvatar(
+                radius: 28,
+                backgroundImage: user.photoURL.isNotEmpty
+                    ? NetworkImage(user.photoURL)
+                    : null,
+                backgroundColor: Colors.white,
+                child: user.photoURL.isEmpty
+                    ? const Icon(Icons.person, color: Colors.blueAccent, size: 30)
+                    : null,
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      user.name.isNotEmpty ? user.name : 'User',
+                      style: const TextStyle(
+                        color: Colors.white,
+                        fontSize: 18,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                    if (user.email.isNotEmpty)
+                      Text(
+                        user.email,
+                        style: const TextStyle(
+                          color: Colors.white70,
+                          fontSize: 13,
+                        ),
+                      ),
+                  ],
                 ),
-                if (user.email.isNotEmpty)
-                  Text(
-                    user.email,
-                    style: const TextStyle(color: Colors.white70, fontSize: 13),
-                  ),
-              ],
+              ),
+              IconButton(
+                icon: const Icon(Icons.logout, color: Colors.white70),
+                tooltip: 'Sign out',
+                onPressed: deletingAccount ? null : () => authService.signOut(),
+              ),
+            ],
+          ),
+          const SizedBox(height: 12),
+          SizedBox(
+            width: double.infinity,
+            child: OutlinedButton.icon(
+              onPressed: onDeleteAccount,
+              style: OutlinedButton.styleFrom(
+                foregroundColor: Colors.white,
+                side: const BorderSide(color: Colors.white70),
+                padding: const EdgeInsets.symmetric(vertical: 12),
+              ),
+              icon: deletingAccount
+                  ? const SizedBox(
+                      width: 16,
+                      height: 16,
+                      child: CircularProgressIndicator(
+                        strokeWidth: 2,
+                        color: Colors.white,
+                      ),
+                    )
+                  : const Icon(Icons.delete_outline),
+              label: Text(
+                deletingAccount ? 'Deleting account...' : 'Delete Account',
+              ),
             ),
           ),
-          IconButton(
-            icon: const Icon(Icons.logout, color: Colors.white70),
-            tooltip: 'Sign out',
-            onPressed: () => authService.signOut(),
+          const SizedBox(height: 4),
+          const Text(
+            'This removes your app account and associated data.',
+            style: TextStyle(color: Colors.white70, fontSize: 12),
           ),
         ],
       ),

@@ -5,15 +5,40 @@ import 'models.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:crypto/crypto.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:firebase_storage/firebase_storage.dart';
 import 'package:google_sign_in/google_sign_in.dart';
 import 'package:flutter/foundation.dart';
+import 'package:http/http.dart' as http;
 import 'package:rxdart/rxdart.dart';
 import 'package:sign_in_with_apple/sign_in_with_apple.dart';
+
+class AccountDeletionResult {
+  final bool deleted;
+  final String message;
+
+  const AccountDeletionResult({
+    required this.deleted,
+    required this.message,
+  });
+}
+
+class _AppleRevocationContext {
+  final String authorizationCode;
+  final String identityToken;
+
+  const _AppleRevocationContext({
+    required this.authorizationCode,
+    required this.identityToken,
+  });
+}
 
 class AuthService {
   final FirebaseAuth _auth = FirebaseAuth.instance;
   static const String _googleServerClientId =
       '473096260334-752319v0jpfkajs4muj07ri12e6215g9.apps.googleusercontent.com';
+  static const String _appleRevocationEndpoint = String.fromEnvironment(
+    'APPLE_ACCOUNT_REVOCATION_URL',
+  );
 
   late final Stream<User?> user; // firebase user
   final PublishSubject<bool> loading = PublishSubject<bool>();
@@ -62,15 +87,10 @@ class AuthService {
       // Check if platform supports authenticate
       if (GoogleSignIn.instance.supportsAuthenticate()) {
         // Attempt authentication
-        final GoogleSignInAccount? googleUser = await GoogleSignIn.instance.authenticate();
-
-        if (googleUser == null) {
-          loading.add(false);
-          return null; // user cancelled
-        }
+        final googleUser = await GoogleSignIn.instance.authenticate();
 
         // Get authentication details
-        final GoogleSignInAuthentication googleAuth = await googleUser.authentication;
+        final googleAuth = googleUser.authentication;
         final GoogleSignInClientAuthorization? googleAccess = await googleUser
             .authorizationClient
             .authorizationForScopes(<String>['email', 'profile']);
@@ -204,6 +224,233 @@ class AuthService {
       print(error);
       loading.add(false);
       return null;
+    }
+  }
+
+  Future<AccountDeletionResult> deleteCurrentUserAccount() async {
+    final currentUser = _auth.currentUser;
+    if (currentUser == null) {
+      return const AccountDeletionResult(
+        deleted: false,
+        message: 'No signed-in account was found.',
+      );
+    }
+
+    try {
+      loading.add(true);
+      await currentUser.reload();
+      final refreshedUser = _auth.currentUser;
+      if (refreshedUser == null) {
+        return const AccountDeletionResult(
+          deleted: false,
+          message: 'Your session expired. Please sign in again and retry.',
+        );
+      }
+
+      final providers =
+          refreshedUser.providerData.map((p) => p.providerId).toSet();
+      final appleContext = await _reauthenticateForDeletion(refreshedUser);
+      final warnings = <String>[];
+
+      if (appleContext != null) {
+        final revoked = await _revokeAppleAuthorization(
+          user: refreshedUser,
+          context: appleContext,
+        );
+        if (!revoked) {
+          warnings.add(
+            'Apple token revocation is not configured yet. Set APPLE_ACCOUNT_REVOCATION_URL before App Store submission.',
+          );
+        }
+      }
+
+      await _deleteUserOwnedData(refreshedUser.uid);
+      await refreshedUser.delete();
+      await _auth.signOut();
+      if (!kIsWeb && providers.contains('google.com')) {
+        await GoogleSignIn.instance.signOut();
+      }
+
+      final message = warnings.isEmpty
+          ? 'Your account and associated data were deleted.'
+          : 'Your account and associated data were deleted. ${warnings.join(' ')}';
+      return AccountDeletionResult(deleted: true, message: message);
+    } on FirebaseAuthException catch (error) {
+      if (error.code == 'requires-recent-login') {
+        return const AccountDeletionResult(
+          deleted: false,
+          message: 'Please reauthenticate and try deleting your account again.',
+        );
+      }
+      if (error.code == 'user-cancelled') {
+        return const AccountDeletionResult(
+          deleted: false,
+          message: 'Account deletion was cancelled.',
+        );
+      }
+      return AccountDeletionResult(
+        deleted: false,
+        message: error.message ?? 'Could not delete your account right now.',
+      );
+    } catch (error) {
+      return AccountDeletionResult(
+        deleted: false,
+        message: 'Could not delete your account right now: $error',
+      );
+    } finally {
+      loading.add(false);
+    }
+  }
+
+  Future<_AppleRevocationContext?> _reauthenticateForDeletion(User user) async {
+    final providers = user.providerData.map((p) => p.providerId).toSet();
+    if (providers.contains('apple.com')) {
+      return _reauthenticateWithApple(user);
+    }
+    if (providers.contains('google.com')) {
+      await _reauthenticateWithGoogle(user);
+    }
+    return null;
+  }
+
+  Future<void> _reauthenticateWithGoogle(User user) async {
+    if (kIsWeb) {
+      throw FirebaseAuthException(
+        code: 'requires-recent-login',
+        message: 'Account deletion reauthentication is not available on web.',
+      );
+    }
+
+    await _initializeGoogleSignIn();
+    if (!GoogleSignIn.instance.supportsAuthenticate()) {
+      throw FirebaseAuthException(
+        code: 'requires-recent-login',
+        message: 'Google reauthentication is not available on this device.',
+      );
+    }
+
+    final googleUser = await GoogleSignIn.instance.authenticate();
+    final googleAuth = googleUser.authentication;
+    final googleAccess = await googleUser.authorizationClient
+        .authorizationForScopes(<String>['email', 'profile']);
+
+    if (googleAuth.idToken == null) {
+      throw FirebaseAuthException(
+        code: 'requires-recent-login',
+        message: 'Google reauthentication did not return an ID token.',
+      );
+    }
+
+    final credential = GoogleAuthProvider.credential(
+      accessToken: googleAccess?.accessToken,
+      idToken: googleAuth.idToken,
+    );
+    await user.reauthenticateWithCredential(credential);
+  }
+
+  Future<_AppleRevocationContext> _reauthenticateWithApple(User user) async {
+    if (!await SignInWithApple.isAvailable()) {
+      throw FirebaseAuthException(
+        code: 'requires-recent-login',
+        message: 'Sign in with Apple is not available on this device.',
+      );
+    }
+
+    final rawNonce = _generateNonce();
+    final nonce = _sha256ofString(rawNonce);
+    final appleCredential = await SignInWithApple.getAppleIDCredential(
+      scopes: [AppleIDAuthorizationScopes.email],
+      nonce: nonce,
+    );
+
+    if (appleCredential.identityToken == null ||
+        appleCredential.identityToken!.isEmpty) {
+      throw FirebaseAuthException(
+        code: 'requires-recent-login',
+        message: 'Apple reauthentication did not return an identity token.',
+      );
+    }
+
+    final oauthCredential = OAuthProvider('apple.com').credential(
+      idToken: appleCredential.identityToken,
+      accessToken: appleCredential.authorizationCode,
+      rawNonce: rawNonce,
+    );
+    await user.reauthenticateWithCredential(oauthCredential);
+
+    return _AppleRevocationContext(
+      authorizationCode: appleCredential.authorizationCode,
+      identityToken: appleCredential.identityToken!,
+    );
+  }
+
+  Future<bool> _revokeAppleAuthorization({
+    required User user,
+    required _AppleRevocationContext context,
+  }) async {
+    if (_appleRevocationEndpoint.isEmpty) {
+      return false;
+    }
+
+    final response = await http.post(
+      Uri.parse(_appleRevocationEndpoint),
+      headers: const {'Content-Type': 'application/json'},
+      body: jsonEncode({
+        'userId': user.uid,
+        'email': user.email,
+        'authorizationCode': context.authorizationCode,
+        'identityToken': context.identityToken,
+      }),
+    );
+
+    if (response.statusCode < 200 || response.statusCode >= 300) {
+      throw Exception(
+        'Apple token revocation failed with status ${response.statusCode}.',
+      );
+    }
+
+    return true;
+  }
+
+  Future<void> _deleteUserOwnedData(String userId) async {
+    await _deleteDocsByUserId('notifications', userId);
+    await _deleteDocsByUserId('moderationQueue', userId);
+    await _deleteDocsByUserId('posts', userId);
+    await _deleteDocsByUserId('albums', userId);
+    await FirebaseFirestore.instance.collection('users').doc(userId).delete();
+    await _deleteStorageFolder(FirebaseStorage.instance.ref('users/$userId'));
+  }
+
+  Future<void> _deleteDocsByUserId(String collection, String userId) async {
+    while (true) {
+      final snapshot = await FirebaseFirestore.instance
+          .collection(collection)
+          .where('userId', isEqualTo: userId)
+          .limit(100)
+          .get();
+      if (snapshot.docs.isEmpty) {
+        return;
+      }
+
+      final batch = FirebaseFirestore.instance.batch();
+      for (final doc in snapshot.docs) {
+        batch.delete(doc.reference);
+      }
+      await batch.commit();
+
+      if (snapshot.docs.length < 100) {
+        return;
+      }
+    }
+  }
+
+  Future<void> _deleteStorageFolder(Reference reference) async {
+    final items = await reference.listAll();
+    for (final prefix in items.prefixes) {
+      await _deleteStorageFolder(prefix);
+    }
+    for (final item in items.items) {
+      await item.delete();
     }
   }
 
