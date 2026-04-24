@@ -137,6 +137,18 @@ class HomeWidget extends StatelessWidget {
         if (appData.loading) {
           return const Center(child: CircularProgressIndicator());
         }
+        if (appData.error) {
+          return const Center(
+            child: Padding(
+              padding: EdgeInsets.all(24),
+              child: Text(
+                'Could not load content. Please check your connection and restart the app.',
+                textAlign: TextAlign.center,
+                style: TextStyle(color: Colors.grey),
+              ),
+            ),
+          );
+        }
         return SingleChildScrollView(
           padding: const EdgeInsets.all(16),
           child: Column(

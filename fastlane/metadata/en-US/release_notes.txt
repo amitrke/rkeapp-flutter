@@ -1,1 +1,1 @@
-Bug fixes and performance improvements.
+Improved app stability and performance. Better error handling when the network is unavailable.

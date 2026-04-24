@@ -1,43 +1,15 @@
+import 'package:rkeapp/collections.dart';
+import 'package:rkeapp/image_utils.dart';
 import 'package:rkeapp/models.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
-import 'package:firebase_storage/firebase_storage.dart';
 import 'package:flutter/material.dart';
 
 class PhotoGalleryScreen extends StatelessWidget {
   const PhotoGalleryScreen({super.key});
 
-  static const Map<String, String> _sizeSuffix = <String, String>{
-    's': '200x200',
-    'm': '680x680',
-    'l': '1920x1080',
-  };
-
-  static String _storagePath(String userId, String filename, String size) {
-    final lastDot = filename.lastIndexOf('.');
-    final base = lastDot != -1 ? filename.substring(0, lastDot) : filename;
-    final ext = lastDot != -1 ? filename.substring(lastDot + 1) : '';
-    final dimensions = _sizeSuffix[size] ?? _sizeSuffix['m']!;
-    return 'users/$userId/images/${base}_$dimensions.$ext';
-  }
-
-  static Future<String> resolveImage(
-    String userId,
-    String filename, {
-    String size = 'm',
-  }) async {
-    if (filename.startsWith('http')) return filename;
-    try {
-      return await FirebaseStorage.instance
-          .ref(_storagePath(userId, filename, size))
-          .getDownloadURL();
-    } catch (_) {
-      return '';
-    }
-  }
-
   static Future<List<AppAlbum>> fetchAlbums() async {
     final snapshot = await FirebaseFirestore.instance
-        .collection('albums')
+        .collection(Collections.albums)
         .where('public', isEqualTo: true)
         .get();
 
@@ -46,7 +18,7 @@ class PhotoGalleryScreen extends StatelessWidget {
       final userId = data['userId'] as String? ?? '';
       final images = List<String>.from(data['images'] as List? ?? const []);
       final coverUrl = images.isNotEmpty
-          ? await resolveImage(userId, images.first, size: 's')
+          ? await resolveStorageImage(userId, images.first, size: 's')
           : '';
 
       return AppAlbum(
@@ -239,9 +211,9 @@ class AlbumDetailScreen extends StatelessWidget {
 
   Future<List<String>> _loadImages(String size) async {
     final futures = album.images
-        .map((image) => PhotoGalleryScreen.resolveImage(album.userId, image, size: size))
+        .map((image) => resolveStorageImage(album.userId, image, size: size))
         .toList();
-    final urls = await Future.wait(futures);
+    final urls = await Future.wait<String>(futures);
     return urls.where((url) => url.isNotEmpty).toList();
   }
 

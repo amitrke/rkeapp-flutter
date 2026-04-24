@@ -2,6 +2,7 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
+import 'collections.dart';
 import 'models.dart';
 
 /// Contact form — logged-in users send a message to the site admins.
@@ -37,7 +38,7 @@ class _ContactScreenState extends State<ContactScreen> {
     if (!_formKey.currentState!.validate()) return;
     setState(() => _sending = true);
     try {
-      await FirebaseFirestore.instance.collection('messages').add({
+      await FirebaseFirestore.instance.collection(Collections.messages).add({
         'fromUserId': userId,
         'title': _reason,
         'body': _bodyCtrl.text.trim(),

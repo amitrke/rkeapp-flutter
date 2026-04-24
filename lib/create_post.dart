@@ -2,11 +2,10 @@ import 'dart:convert';
 import 'dart:io';
 
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'collections.dart' show Collections;
 import 'package:file_picker/file_picker.dart';
-import 'package:firebase_storage/firebase_storage.dart';
 import 'package:flutter/material.dart';
-import 'package:image/image.dart' as img;
-import 'package:path/path.dart' as p;
+import 'image_utils.dart' show resizeAndUploadImage;
 
 /// Create or edit a post.
 ///
@@ -54,7 +53,7 @@ class _CreatePostScreenState extends State<CreatePostScreen> {
   Future<void> _init() async {
     if (widget.postId != null) {
       final doc = await FirebaseFirestore.instance
-          .collection('posts')
+          .collection(Collections.posts)
           .doc(widget.postId)
           .get();
       if (doc.exists) {
@@ -125,41 +124,8 @@ class _CreatePostScreenState extends State<CreatePostScreen> {
   Future<void> _uploadImage(File file) async {
     setState(() => _saving = true);
     try {
-      // Sanitize filename
-      final original = p.basenameWithoutExtension(file.path)
-          .toLowerCase()
-          .replaceAll(RegExp(r'[^\w]'), '-')
-          .replaceAll(RegExp(r'-+'), '-');
-      final ext = p.extension(file.path).replaceFirst('.', '').toLowerCase();
-      final timestamp = DateTime.now().millisecondsSinceEpoch;
-      final baseName = '$original-$timestamp';
-      final storedName = '$baseName.$ext'; // what we save in Firestore
-
-      // Resize to max 680px on the longer side
-      final bytes = await file.readAsBytes();
-      final decoded = img.decodeImage(bytes);
-      if (decoded == null) throw Exception('Could not decode image');
-
-      img.Image resized;
-      if (decoded.width > decoded.height) {
-        resized = img.copyResize(decoded, width: 680);
-      } else {
-        resized = img.copyResize(decoded, height: 680);
-      }
-      final resizedBytes = img.encodeJpg(resized, quality: 85);
-
-      // Upload to images/ folder with _680x680 suffix
-      final storagePath =
-          'users/${widget.userId}/images/${baseName}_680x680.$ext';
-      final ref = FirebaseStorage.instance.ref(storagePath);
-      await ref.putData(
-        resizedBytes,
-        SettableMetadata(contentType: 'image/jpeg'),
-      );
-
-      setState(() {
-        _images.add(storedName);
-      });
+      final storedName = await resizeAndUploadImage(file, widget.userId);
+      setState(() => _images.add(storedName));
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
@@ -190,7 +156,7 @@ class _CreatePostScreenState extends State<CreatePostScreen> {
   Future<void> _save({required bool publish}) async {
     setState(() => _saving = true);
     try {
-      final col = FirebaseFirestore.instance.collection('posts');
+      final col = FirebaseFirestore.instance.collection(Collections.posts);
       final now = DateTime.now().millisecondsSinceEpoch;
       final title = _titleCtrl.text.trim();
       final slug = _buildSlug(title);
@@ -222,7 +188,7 @@ class _CreatePostScreenState extends State<CreatePostScreen> {
       if (publish) {
         // Write to moderationQueue so admins can review
         await FirebaseFirestore.instance
-            .collection('moderationQueue')
+            .collection(Collections.moderationQueue)
             .doc(docId)
             .set({
           'itemId': docId,

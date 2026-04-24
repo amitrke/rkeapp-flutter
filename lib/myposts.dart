@@ -1,6 +1,7 @@
 import 'dart:async';
 
 import 'auth.dart';
+import 'collections.dart';
 import 'create_album.dart';
 import 'create_post.dart';
 import 'models.dart';
@@ -254,7 +255,7 @@ class _MyPostsTab extends StatelessWidget {
   Widget build(BuildContext context) {
     return StreamBuilder<QuerySnapshot>(
       stream: FirebaseFirestore.instance
-          .collection('posts')
+          .collection(Collections.posts)
           .where('userId', isEqualTo: userId)
           .snapshots(),
       builder: (context, snap) {
@@ -343,7 +344,7 @@ class _MyAlbumsTab extends StatelessWidget {
   Widget build(BuildContext context) {
     return StreamBuilder<QuerySnapshot>(
       stream: FirebaseFirestore.instance
-          .collection('albums')
+          .collection(Collections.albums)
           .where('userId', isEqualTo: userId)
           .snapshots(),
       builder: (context, snap) {
@@ -487,7 +488,7 @@ class _NotificationsTab extends StatelessWidget {
 
   Future<void> _markRead(String notifId) async {
     await FirebaseFirestore.instance
-        .collection('notifications')
+        .collection(Collections.notifications)
         .doc(notifId)
         .update({'read': true});
   }
@@ -496,7 +497,7 @@ class _NotificationsTab extends StatelessWidget {
     final batch = FirebaseFirestore.instance.batch();
     for (final id in ids) {
       batch.update(
-          FirebaseFirestore.instance.collection('notifications').doc(id),
+          FirebaseFirestore.instance.collection(Collections.notifications).doc(id),
           {'read': true});
     }
     await batch.commit();
@@ -506,7 +507,7 @@ class _NotificationsTab extends StatelessWidget {
   Widget build(BuildContext context) {
     return StreamBuilder<QuerySnapshot>(
       stream: FirebaseFirestore.instance
-          .collection('notifications')
+          .collection(Collections.notifications)
           .where('userId', isEqualTo: userId)
           .where('read', isEqualTo: false)
           .orderBy('createdAt', descending: true)

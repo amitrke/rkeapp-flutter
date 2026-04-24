@@ -1,6 +1,8 @@
+import 'dart:async';
 import 'dart:convert';
 import 'dart:math';
 
+import 'collections.dart';
 import 'models.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:crypto/crypto.dart';
@@ -9,7 +11,6 @@ import 'package:firebase_storage/firebase_storage.dart';
 import 'package:google_sign_in/google_sign_in.dart';
 import 'package:flutter/foundation.dart';
 import 'package:http/http.dart' as http;
-import 'package:rxdart/rxdart.dart';
 import 'package:sign_in_with_apple/sign_in_with_apple.dart';
 
 class AccountDeletionResult {
@@ -41,7 +42,8 @@ class AuthService {
   );
 
   late final Stream<User?> user; // firebase user
-  final PublishSubject<bool> loading = PublishSubject<bool>();
+  final StreamController<bool> _loadingController = StreamController<bool>.broadcast();
+  Stream<bool> get loading => _loadingController.stream;
   Stream<RkeUser>? rkeUserStream;
   late RkeUser rkeUser;
   bool _initialized = false;
@@ -66,7 +68,7 @@ class AuthService {
 
   Future<User?> googleSignIn() async {
     try {
-      loading.add(true);
+      _loadingController.add(true);
 
       if (kIsWeb) {
         final UserCredential userCredential =
@@ -74,10 +76,8 @@ class AuthService {
         final User? webUser = userCredential.user;
         if (webUser != null) {
           updateUserData(webUser);
-          // ignore: avoid_print
-          print("user name: ${webUser.displayName}");
         }
-        loading.add(false);
+        _loadingController.add(false);
         return webUser;
       }
 
@@ -96,7 +96,7 @@ class AuthService {
             .authorizationForScopes(<String>['email', 'profile']);
 
         if (googleAuth.idToken == null) {
-          loading.add(false);
+          _loadingController.add(false);
           return null;
         }
 
@@ -112,26 +112,20 @@ class AuthService {
         final user = userCredential.user;
         if (user != null) {
           updateUserData(user);
-          // ignore: avoid_print
-          print("user name: ${user.displayName}");
         }
 
-        loading.add(false);
+        _loadingController.add(false);
         return user;
       } else {
         // This platform requires an alternative sign-in UI integration.
-        loading.add(false);
+        _loadingController.add(false);
         return null;
       }
-    } on GoogleSignInException catch (error) {
-      // ignore: avoid_print
-      print('GoogleSignInException(${error.code}): ${error.description}');
-      loading.add(false);
+    } on GoogleSignInException catch (_) {
+      _loadingController.add(false);
       return null;
-    } catch (error) {
-      // ignore: avoid_print
-      print(error);
-      loading.add(false);
+    } catch (_) {
+      _loadingController.add(false);
       return null;
     }
   }
@@ -153,12 +147,10 @@ class AuthService {
 
   Future<User?> appleSignIn() async {
     try {
-      loading.add(true);
+      _loadingController.add(true);
 
       if (!await SignInWithApple.isAvailable()) {
-        // ignore: avoid_print
-        print('Sign in with Apple is not available on this device.');
-        loading.add(false);
+        _loadingController.add(false);
         return null;
       }
 
@@ -175,9 +167,7 @@ class AuthService {
 
       if (appleCredential.identityToken == null ||
           appleCredential.identityToken!.isEmpty) {
-        // ignore: avoid_print
-        print('Apple sign-in failed: missing identity token.');
-        loading.add(false);
+        _loadingController.add(false);
         return null;
       }
 
@@ -204,25 +194,17 @@ class AuthService {
           }
         }
         updateUserData(_auth.currentUser ?? user);
-        // ignore: avoid_print
-        print('Apple sign-in: ${_auth.currentUser?.displayName ?? user.email}');
       }
-      loading.add(false);
+      _loadingController.add(false);
       return user;
-    } on SignInWithAppleAuthorizationException catch (error) {
-      // ignore: avoid_print
-      print('SignInWithAppleAuthorizationException(${error.code}): ${error.message}');
-      loading.add(false);
+    } on SignInWithAppleAuthorizationException catch (_) {
+      _loadingController.add(false);
       return null;
-    } on FirebaseAuthException catch (error) {
-      // ignore: avoid_print
-      print('FirebaseAuthException(${error.code}): ${error.message}');
-      loading.add(false);
+    } on FirebaseAuthException catch (_) {
+      _loadingController.add(false);
       return null;
-    } catch (error) {
-      // ignore: avoid_print
-      print(error);
-      loading.add(false);
+    } catch (_) {
+      _loadingController.add(false);
       return null;
     }
   }
@@ -237,7 +219,7 @@ class AuthService {
     }
 
     try {
-      loading.add(true);
+      _loadingController.add(true);
       await currentUser.reload();
       final refreshedUser = _auth.currentUser;
       if (refreshedUser == null) {
@@ -298,7 +280,7 @@ class AuthService {
         message: 'Could not delete your account right now: $error',
       );
     } finally {
-      loading.add(false);
+      _loadingController.add(false);
     }
   }
 
@@ -413,11 +395,11 @@ class AuthService {
   }
 
   Future<void> _deleteUserOwnedData(String userId) async {
-    await _deleteDocsByUserId('notifications', userId);
-    await _deleteDocsByUserId('moderationQueue', userId);
-    await _deleteDocsByUserId('posts', userId);
-    await _deleteDocsByUserId('albums', userId);
-    await FirebaseFirestore.instance.collection('users').doc(userId).delete();
+    await _deleteDocsByUserId(Collections.notifications, userId);
+    await _deleteDocsByUserId(Collections.moderationQueue, userId);
+    await _deleteDocsByUserId(Collections.posts, userId);
+    await _deleteDocsByUserId(Collections.albums, userId);
+    await FirebaseFirestore.instance.collection(Collections.users).doc(userId).delete();
     await _deleteStorageFolder(FirebaseStorage.instance.ref('users/$userId'));
   }
 
@@ -469,7 +451,7 @@ class AuthService {
       data['profilePic'] = user.photoURL;
     }
     await FirebaseFirestore.instance
-        .collection('users')
+        .collection(Collections.users)
         .doc(user.uid)
         .set(data, SetOptions(merge: true));
   }

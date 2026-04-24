@@ -45,6 +45,18 @@ class WeatherDetailsWidget extends StatelessWidget {
         if (appData.loading) {
           return const Center(child: CircularProgressIndicator());
         }
+        if (appData.error) {
+          return const Center(
+            child: Padding(
+              padding: EdgeInsets.all(24),
+              child: Text(
+                'Could not load weather data. Please check your connection and restart the app.',
+                textAlign: TextAlign.center,
+                style: TextStyle(color: Colors.grey),
+              ),
+            ),
+          );
+        }
 
         final details = appData.weatherDetails;
         if (details == null) {

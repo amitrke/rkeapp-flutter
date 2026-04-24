@@ -52,16 +52,6 @@ class AlbumData with ChangeNotifier {
   }
 }
 
-class UserData with ChangeNotifier {
-  String url = "";
-
-  UserData();
-
-  void changeUserData() {
-    url = "";
-  }
-}
-
 // ---------- Home screen data models ----------
 
 class Post {
@@ -252,9 +242,16 @@ class AppData with ChangeNotifier {
   WeatherDay? tomorrowWeather;
   WeatherDetails? weatherDetails;
   bool loading = true;
+  bool error = false;
 
   void setLoaded() {
     loading = false;
+    notifyListeners();
+  }
+
+  void setError() {
+    loading = false;
+    error = true;
     notifyListeners();
   }
 }
