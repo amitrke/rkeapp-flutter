@@ -47,7 +47,7 @@ class AlbumData with ChangeNotifier {
   }
 
   void addImage(AlbumItem item) {
-    this.images.add(item);
+    images.add(item);
     notifyListeners();
   }
 }
@@ -58,7 +58,7 @@ class UserData with ChangeNotifier {
   UserData();
 
   void changeUserData() {
-    this.url = "";
+    url = "";
   }
 }
 

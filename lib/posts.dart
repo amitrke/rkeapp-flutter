@@ -199,7 +199,7 @@ class AppDataService {
       final timezone = data['timezone'] as String? ?? 'Asia/Kolkata';
       final timezoneOffset = (data['timezone_offset'] as num?)?.toInt() ?? 0;
 
-      WeatherSummary _summaryFrom(dynamic weatherNode) {
+      WeatherSummary summaryFrom(dynamic weatherNode) {
         final first = (weatherNode as List?)?.first as Map<String, dynamic>?;
         return WeatherSummary(
           main: first?['main'] as String? ?? '',
@@ -220,7 +220,7 @@ class AppDataService {
         uvi: (currentRaw['uvi'] as num?)?.toDouble() ?? 0.0,
         clouds: (currentRaw['clouds'] as num?)?.toInt() ?? 0,
         visibility: (currentRaw['visibility'] as num?)?.toInt() ?? 0,
-        summary: _summaryFrom(currentRaw['weather']),
+        summary: summaryFrom(currentRaw['weather']),
       );
 
       final hourlyRaw = (data['hourly'] as List<dynamic>? ?? []).take(12).toList();
@@ -229,7 +229,7 @@ class AppDataService {
         return WeatherHourly(
           dt: (hm['dt'] as num?)?.toInt() ?? 0,
           temp: (hm['temp'] as num?)?.toDouble() ?? 0.0,
-          summary: _summaryFrom(hm['weather']),
+          summary: summaryFrom(hm['weather']),
         );
       }).toList();
 
@@ -242,7 +242,7 @@ class AppDataService {
           dayTemp: (tempMap['day'] as num?)?.toDouble() ?? 0.0,
           minTemp: (tempMap['min'] as num?)?.toDouble() ?? 0.0,
           maxTemp: (tempMap['max'] as num?)?.toDouble() ?? 0.0,
-          summary: _summaryFrom(dm['weather']),
+          summary: summaryFrom(dm['weather']),
         );
       }).toList();
 

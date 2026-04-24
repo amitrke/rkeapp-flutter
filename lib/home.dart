@@ -1,6 +1,6 @@
-import 'package:RkeApp/all_posts.dart';
-import 'package:RkeApp/models.dart';
-import 'package:RkeApp/post_detail.dart';
+import 'package:rkeapp/all_posts.dart';
+import 'package:rkeapp/models.dart';
+import 'package:rkeapp/post_detail.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:url_launcher/url_launcher.dart';

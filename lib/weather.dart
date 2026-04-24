@@ -1,4 +1,4 @@
-import 'package:RkeApp/models.dart';
+import 'package:rkeapp/models.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
@@ -30,7 +30,7 @@ class WeatherDetailsWidget extends StatelessWidget {
       return Icon(Icons.wb_sunny, size: size, color: Colors.orange);
     }
     return Image.network(
-      'https://openweathermap.org/img/wn/${icon}@2x.png',
+      'https://openweathermap.org/img/wn/$icon@2x.png',
       width: size,
       height: size,
       errorBuilder: (_, __, ___) =>

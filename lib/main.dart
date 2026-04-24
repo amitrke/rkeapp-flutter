@@ -75,10 +75,10 @@ class MyStatefulWidget extends StatefulWidget {
   const MyStatefulWidget({super.key});
 
   @override
-  _MyStatefulWidgetState createState() => _MyStatefulWidgetState();
+  MyStatefulWidgetState createState() => MyStatefulWidgetState();
 }
 
-class _MyStatefulWidgetState extends State<MyStatefulWidget> {
+class MyStatefulWidgetState extends State<MyStatefulWidget> {
   int _selectedIndex = 0;
 
   static const List<String> _pageTitles = <String>[

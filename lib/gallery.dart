@@ -1,4 +1,4 @@
-import 'package:RkeApp/models.dart';
+import 'package:rkeapp/models.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_storage/firebase_storage.dart';
 import 'package:flutter/material.dart';
