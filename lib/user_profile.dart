@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 
 import 'collections.dart';
 import 'gallery.dart';
+import 'image_utils.dart';
 import 'models.dart';
 import 'post_detail.dart';
 
@@ -42,7 +43,7 @@ class UserProfileScreen extends StatelessWidget {
       String coverUrl = '';
       if (images.isNotEmpty) {
         try {
-          coverUrl = await PhotoGalleryScreen.resolveImage(uid, images.first, size: 's');
+          coverUrl = await resolveStorageImage(uid, images.first, size: 's');
         } catch (_) {}
       }
       return AppAlbum(
