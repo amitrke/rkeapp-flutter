@@ -6,6 +6,8 @@ Roorkee.org Flutter App
 
 ### Testing
 
+[Open Testing Link](https://play.google.com/store/apps/details?id=org.roorkee)
+
 [Internal Test Link](https://play.google.com/apps/internaltest/4701241773410141731)
 
 ## Automated Screenshots (Maestro)
