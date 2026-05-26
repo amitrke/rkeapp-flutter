@@ -1,6 +1,7 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
 
+import 'collections.dart';
 import 'post_detail.dart';
 import 'user_profile.dart';
 
@@ -41,7 +42,7 @@ class _AllPostsScreenState extends State<AllPostsScreen> {
 
   Query<Map<String, dynamic>> get _query {
     var q = FirebaseFirestore.instance
-        .collection('posts')
+        .collection(Collections.posts)
         .where('public', isEqualTo: true)
         .where('approved', isEqualTo: true)
         .orderBy('updateDate', descending: true)
@@ -90,7 +91,7 @@ class _AllPostsScreenState extends State<AllPostsScreen> {
     if (_authorCache.containsKey(userId)) return _authorCache[userId]!;
     try {
       final doc = await FirebaseFirestore.instance
-          .collection('users')
+          .collection(Collections.users)
           .doc(userId)
           .get();
       final name = doc.data()?['name'] as String? ?? userId;

@@ -1,6 +1,6 @@
-import 'package:RkeApp/all_posts.dart';
-import 'package:RkeApp/models.dart';
-import 'package:RkeApp/post_detail.dart';
+import 'package:rkeapp/all_posts.dart';
+import 'package:rkeapp/models.dart';
+import 'package:rkeapp/post_detail.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:url_launcher/url_launcher.dart';
@@ -136,6 +136,18 @@ class HomeWidget extends StatelessWidget {
       builder: (context, appData, _) {
         if (appData.loading) {
           return const Center(child: CircularProgressIndicator());
+        }
+        if (appData.error) {
+          return const Center(
+            child: Padding(
+              padding: EdgeInsets.all(24),
+              child: Text(
+                'Could not load content. Please check your connection and restart the app.',
+                textAlign: TextAlign.center,
+                style: TextStyle(color: Colors.grey),
+              ),
+            ),
+          );
         }
         return SingleChildScrollView(
           padding: const EdgeInsets.all(16),

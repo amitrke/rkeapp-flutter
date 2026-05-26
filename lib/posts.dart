@@ -1,28 +1,7 @@
+import 'collections.dart';
+import 'image_utils.dart';
 import 'models.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
-import 'package:firebase_storage/firebase_storage.dart';
-
-/// Converts a raw filename stored in Firestore (e.g. "photo.jpg") into the
-/// medium-size Firebase Storage path used by the web app.
-String _storagePath(String userId, String filename) {
-  final lastDot = filename.lastIndexOf('.');
-  final base = lastDot != -1 ? filename.substring(0, lastDot) : filename;
-  final ext = lastDot != -1 ? filename.substring(lastDot + 1) : '';
-  return 'users/$userId/images/${base}_680x680.$ext';
-}
-
-/// Returns a download URL for the image. Accepts either an existing https URL
-/// or a raw filename that needs to be resolved via Firebase Storage.
-Future<String> _resolveImage(String userId, String filename) async {
-  if (filename.startsWith('http')) return filename;
-  try {
-    return await FirebaseStorage.instance
-        .ref(_storagePath(userId, filename))
-        .getDownloadURL();
-  } catch (_) {
-    return '';
-  }
-}
 
 class AppDataService {
   final AppData appData = AppData();
@@ -32,29 +11,29 @@ class AppDataService {
   }
 
   Future<void> _loadAll() async {
-    await Future.wait([
-      _loadPosts(),
-      _loadNews(),
-      _loadEvents(),
-      _loadAlbums(),
-      _loadWeather(),
-    ]);
-    appData.setLoaded();
+    try {
+      await Future.wait([
+        _loadPosts(),
+        _loadNews(),
+        _loadEvents(),
+        _loadAlbums(),
+        _loadWeather(),
+      ]).timeout(const Duration(seconds: 15));
+      appData.setLoaded();
+    } catch (_) {
+      appData.setError();
+    }
   }
 
   Future<void> _loadPosts() async {
     try {
-      // ignore: avoid_print
-      print('[AppData] _loadPosts: querying...');
       final snap = await FirebaseFirestore.instance
-          .collection('posts')
+          .collection(Collections.posts)
           .where('public', isEqualTo: true)
           .where('approved', isEqualTo: true)
           .orderBy('updateDate', descending: true)
           .limit(4)
           .get();
-      // ignore: avoid_print
-      print('[AppData] _loadPosts: got ${snap.docs.length} docs');
 
       final List<Post> posts = [];
       for (final doc in snap.docs) {
@@ -64,13 +43,13 @@ class AppDataService {
 
         String imageUrl = '';
         if (rawImages.isNotEmpty) {
-          imageUrl = await _resolveImage(userId, rawImages[0]);
+          imageUrl = await resolveStorageImage(userId, rawImages[0]);
         }
 
         String authorName = 'Community Member';
         try {
           final uSnap = await FirebaseFirestore.instance
-              .collection('users')
+              .collection(Collections.users)
               .where('id', isEqualTo: userId)
               .limit(1)
               .get();
@@ -92,23 +71,16 @@ class AppDataService {
         ));
       }
       appData.posts = posts;
-    } catch (e, st) {
-      // ignore: avoid_print
-      print('[AppData] _loadPosts ERROR: $e\n$st');
-    }
+    } catch (_) {}
   }
 
   Future<void> _loadNews() async {
     try {
-      // ignore: avoid_print
-      print('[AppData] _loadNews: querying...');
       final snap = await FirebaseFirestore.instance
-          .collection('news')
+          .collection(Collections.news)
           .orderBy('expireAt', descending: true)
           .limit(4)
           .get();
-      // ignore: avoid_print
-      print('[AppData] _loadNews: got ${snap.docs.length} docs');
 
       appData.news = snap.docs.map((doc) {
         final d = doc.data();
@@ -124,25 +96,18 @@ class AppDataService {
               0,
         );
       }).toList();
-    } catch (e, st) {
-      // ignore: avoid_print
-      print('[AppData] _loadNews ERROR: $e\n$st');
-    }
+    } catch (_) {}
   }
 
   Future<void> _loadEvents() async {
     try {
       final today = DateTime.now().toIso8601String().split('T')[0];
-      // ignore: avoid_print
-      print('[AppData] _loadEvents: querying (today=$today)...');
       final snap = await FirebaseFirestore.instance
-          .collection('events')
+          .collection(Collections.events)
           .where('date', isGreaterThanOrEqualTo: today)
           .orderBy('date')
           .limit(4)
           .get();
-      // ignore: avoid_print
-      print('[AppData] _loadEvents: got ${snap.docs.length} docs');
 
       appData.events = snap.docs.map((doc) {
         final d = doc.data();
@@ -153,21 +118,14 @@ class AppDataService {
           date: d['date'] as String? ?? '',
         );
       }).toList();
-    } catch (e, st) {
-      // ignore: avoid_print
-      print('[AppData] _loadEvents ERROR: $e\n$st');
-    }
+    } catch (_) {}
   }
 
   Future<void> _loadWeather() async {
     try {
-      // ignore: avoid_print
-      print('[AppData] _loadWeather: querying...');
       final doc = await FirebaseFirestore.instance
           .doc('weather/roorkee-in')
           .get();
-      // ignore: avoid_print
-      print('[AppData] _loadWeather: exists=${doc.exists}');
       if (!doc.exists) return;
       final data = doc.data()!;
 
@@ -199,7 +157,7 @@ class AppDataService {
       final timezone = data['timezone'] as String? ?? 'Asia/Kolkata';
       final timezoneOffset = (data['timezone_offset'] as num?)?.toInt() ?? 0;
 
-      WeatherSummary _summaryFrom(dynamic weatherNode) {
+      WeatherSummary summaryFrom(dynamic weatherNode) {
         final first = (weatherNode as List?)?.first as Map<String, dynamic>?;
         return WeatherSummary(
           main: first?['main'] as String? ?? '',
@@ -220,7 +178,7 @@ class AppDataService {
         uvi: (currentRaw['uvi'] as num?)?.toDouble() ?? 0.0,
         clouds: (currentRaw['clouds'] as num?)?.toInt() ?? 0,
         visibility: (currentRaw['visibility'] as num?)?.toInt() ?? 0,
-        summary: _summaryFrom(currentRaw['weather']),
+        summary: summaryFrom(currentRaw['weather']),
       );
 
       final hourlyRaw = (data['hourly'] as List<dynamic>? ?? []).take(12).toList();
@@ -229,7 +187,7 @@ class AppDataService {
         return WeatherHourly(
           dt: (hm['dt'] as num?)?.toInt() ?? 0,
           temp: (hm['temp'] as num?)?.toDouble() ?? 0.0,
-          summary: _summaryFrom(hm['weather']),
+          summary: summaryFrom(hm['weather']),
         );
       }).toList();
 
@@ -242,7 +200,7 @@ class AppDataService {
           dayTemp: (tempMap['day'] as num?)?.toDouble() ?? 0.0,
           minTemp: (tempMap['min'] as num?)?.toDouble() ?? 0.0,
           maxTemp: (tempMap['max'] as num?)?.toDouble() ?? 0.0,
-          summary: _summaryFrom(dm['weather']),
+          summary: summaryFrom(dm['weather']),
         );
       }).toList();
 
@@ -253,23 +211,16 @@ class AppDataService {
         hourly: hourly,
         daily: daily,
       );
-    } catch (e, st) {
-      // ignore: avoid_print
-      print('[AppData] _loadWeather ERROR: $e\n$st');
-    }
+    } catch (_) {}
   }
 
   Future<void> _loadAlbums() async {
     try {
-      // ignore: avoid_print
-      print('[AppData] _loadAlbums: querying...');
       final snap = await FirebaseFirestore.instance
-          .collection('albums')
+          .collection(Collections.albums)
           .where('public', isEqualTo: true)
           .limit(6)
           .get();
-      // ignore: avoid_print
-      print('[AppData] _loadAlbums: got ${snap.docs.length} docs');
 
       final albums = <AppAlbum>[];
       for (final doc in snap.docs) {
@@ -277,7 +228,7 @@ class AppDataService {
         final userId = d['userId'] as String? ?? '';
         final images = List<String>.from(d['images'] as List? ?? const []);
         final coverUrl = images.isNotEmpty
-            ? await _resolveImage(userId, images.first)
+            ? await resolveStorageImage(userId, images.first)
             : '';
 
         albums.add(
@@ -295,10 +246,7 @@ class AppDataService {
 
       albums.sort((a, b) => b.updateDate.compareTo(a.updateDate));
       appData.albums = albums;
-    } catch (e, st) {
-      // ignore: avoid_print
-      print('[AppData] _loadAlbums ERROR: $e\n$st');
-    }
+    } catch (_) {}
   }
 }
 

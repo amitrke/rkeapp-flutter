@@ -1,4 +1,4 @@
-import 'package:RkeApp/models.dart';
+import 'package:rkeapp/models.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
@@ -30,7 +30,7 @@ class WeatherDetailsWidget extends StatelessWidget {
       return Icon(Icons.wb_sunny, size: size, color: Colors.orange);
     }
     return Image.network(
-      'https://openweathermap.org/img/wn/${icon}@2x.png',
+      'https://openweathermap.org/img/wn/$icon@2x.png',
       width: size,
       height: size,
       errorBuilder: (_, __, ___) =>
@@ -44,6 +44,18 @@ class WeatherDetailsWidget extends StatelessWidget {
       builder: (context, appData, _) {
         if (appData.loading) {
           return const Center(child: CircularProgressIndicator());
+        }
+        if (appData.error) {
+          return const Center(
+            child: Padding(
+              padding: EdgeInsets.all(24),
+              child: Text(
+                'Could not load weather data. Please check your connection and restart the app.',
+                textAlign: TextAlign.center,
+                style: TextStyle(color: Colors.grey),
+              ),
+            ),
+          );
         }
 
         final details = appData.weatherDetails;

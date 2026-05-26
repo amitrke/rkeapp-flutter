@@ -1,7 +1,9 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
 
+import 'collections.dart';
 import 'gallery.dart';
+import 'image_utils.dart';
 import 'models.dart';
 import 'post_detail.dart';
 
@@ -12,13 +14,13 @@ class UserProfileScreen extends StatelessWidget {
 
   Future<_ProfileData> _load() async {
     final userDoc = await FirebaseFirestore.instance
-        .collection('users')
+        .collection(Collections.users)
         .doc(userId)
         .get();
     final userData = userDoc.data() ?? {};
 
     final postsSnap = await FirebaseFirestore.instance
-        .collection('posts')
+        .collection(Collections.posts)
         .where('userId', isEqualTo: userId)
         .where('public', isEqualTo: true)
         .where('approved', isEqualTo: true)
@@ -26,7 +28,7 @@ class UserProfileScreen extends StatelessWidget {
         .get();
 
     final albumsSnap = await FirebaseFirestore.instance
-        .collection('albums')
+        .collection(Collections.albums)
         .where('userId', isEqualTo: userId)
         .where('public', isEqualTo: true)
         .where('approved', isEqualTo: true)
@@ -41,7 +43,7 @@ class UserProfileScreen extends StatelessWidget {
       String coverUrl = '';
       if (images.isNotEmpty) {
         try {
-          coverUrl = await PhotoGalleryScreen.resolveImage(uid, images.first, size: 's');
+          coverUrl = await resolveStorageImage(uid, images.first, size: 's');
         } catch (_) {}
       }
       return AppAlbum(

@@ -47,18 +47,8 @@ class AlbumData with ChangeNotifier {
   }
 
   void addImage(AlbumItem item) {
-    this.images.add(item);
+    images.add(item);
     notifyListeners();
-  }
-}
-
-class UserData with ChangeNotifier {
-  String url = "";
-
-  UserData();
-
-  void changeUserData() {
-    this.url = "";
   }
 }
 
@@ -252,9 +242,16 @@ class AppData with ChangeNotifier {
   WeatherDay? tomorrowWeather;
   WeatherDetails? weatherDetails;
   bool loading = true;
+  bool error = false;
 
   void setLoaded() {
     loading = false;
+    notifyListeners();
+  }
+
+  void setError() {
+    loading = false;
+    error = true;
     notifyListeners();
   }
 }

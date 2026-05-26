@@ -1,7 +1,8 @@
 import 'dart:convert';
 
 import 'package:cloud_firestore/cloud_firestore.dart';
-import 'package:firebase_storage/firebase_storage.dart';
+import 'collections.dart' show Collections;
+import 'image_utils.dart' show resolveStorageImage;
 import 'package:flutter/material.dart';
 
 class PostDetailScreen extends StatelessWidget {
@@ -17,23 +18,8 @@ class PostDetailScreen extends StatelessWidget {
   });
 
   Future<Map<String, dynamic>?> _loadPost() async {
-    final doc = await FirebaseFirestore.instance.collection('posts').doc(postId).get();
+    final doc = await FirebaseFirestore.instance.collection(Collections.posts).doc(postId).get();
     return doc.data();
-  }
-
-  Future<String> _resolveImage(String userId, String filename) async {
-    if (filename.startsWith('http')) return filename;
-
-    final lastDot = filename.lastIndexOf('.');
-    final base = lastDot != -1 ? filename.substring(0, lastDot) : filename;
-    final ext = lastDot != -1 ? filename.substring(lastDot + 1) : '';
-    final path = 'users/$userId/images/${base}_680x680.$ext';
-
-    try {
-      return await FirebaseStorage.instance.ref(path).getDownloadURL();
-    } catch (_) {
-      return '';
-    }
   }
 
   String _extractBodyText(String? edState) {
@@ -108,7 +94,7 @@ class PostDetailScreen extends StatelessWidget {
           final rawImages = List<String>.from(post['images'] as List? ?? const []);
 
           return FutureBuilder<List<String>>(
-            future: Future.wait(rawImages.map((image) => _resolveImage(userId, image))),
+            future: Future.wait(rawImages.map((image) => resolveStorageImage(userId, image))),
             builder: (context, imageSnapshot) {
               final imageUrls = (imageSnapshot.data ?? const <String>[])
                   .where((url) => url.isNotEmpty)
