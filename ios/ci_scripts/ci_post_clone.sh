@@ -14,8 +14,12 @@ export PATH="$FLUTTER_DIR/bin:$PATH"
 
 cd "$REPO_ROOT"
 flutter --version
+# Force CocoaPods plugin integration for iOS in CI.
+# Swift Package Manager mode can omit Pods for Firebase plugins and break GeneratedPluginRegistrant imports.
+flutter config --no-enable-swift-package-manager
 flutter precache --ios
 flutter pub get
 
-cd ios
-pod install
+# Generate iOS build configuration and plugin integration before xcodebuild archive.
+# This runs CocoaPods with the same Flutter-managed settings used by local flutter build flows.
+flutter build ios --config-only --no-codesign
