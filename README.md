@@ -10,6 +10,32 @@ Roorkee.org Flutter App
 
 [Internal Test Link](https://play.google.com/apps/internaltest/4701241773410141731)
 
+### Store Metadata
+
+Use the fastlane lanes below to upload store listing metadata from the repository root:
+
+```sh
+bundle exec fastlane android upload_metadata
+bundle exec fastlane ios upload_metadata
+```
+
+These lanes upload the title, descriptions, keywords, and release notes for Google Play and App Store Connect.
+
+For local iOS runs, load your `.env.fastlane` file first, then run the lane. The helper script does the same lane setup with a shorter command:
+
+```sh
+set -a
+source .env.fastlane
+set +a
+bundle exec fastlane ios upload_metadata
+
+./scripts/run-fastlane.sh ios-metadata
+```
+
+`IOS_APP_IDENTIFIER` defaults to `org.roorkee`.
+
+If App Store Connect returns `No data` on the first metadata upload, add a minimal file at `fastlane/metadata/review_information/notes.txt` so deliver can create the review information record.
+
 ## Automated Screenshots (Maestro)
 
 This app now includes a Maestro-based screenshot system.
