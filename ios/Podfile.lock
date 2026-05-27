@@ -1247,9 +1247,6 @@ PODS:
     - FirebaseAuth (~> 12.12.0)
   - Firebase/CoreOnly (12.12.0):
     - FirebaseCore (~> 12.12.0)
-  - Firebase/Database (12.12.0):
-    - Firebase/CoreOnly
-    - FirebaseDatabase (~> 12.12.0)
   - Firebase/Firestore (12.12.0):
     - Firebase/CoreOnly
     - FirebaseFirestore (~> 12.12.0)
@@ -1271,10 +1268,6 @@ PODS:
     - Flutter
   - firebase_core (4.7.0):
     - Firebase/CoreOnly (= 12.12.0)
-    - Flutter
-  - firebase_database (12.3.0):
-    - Firebase/Database (= 12.12.0)
-    - firebase_core
     - Flutter
   - firebase_storage (13.3.0):
     - Firebase/Storage (= 12.12.0)
@@ -1323,12 +1316,6 @@ PODS:
     - FirebaseCore (~> 12.12.0)
   - FirebaseCoreInternal (12.12.0):
     - "GoogleUtilities/NSData+zlib (~> 8.1)"
-  - FirebaseDatabase (12.12.0):
-    - FirebaseAppCheckInterop (~> 12.12.0)
-    - FirebaseCore (~> 12.12.0)
-    - FirebaseSharedSwift (~> 12.12.0)
-    - GoogleUtilities/UserDefaults (~> 8.1)
-    - leveldb-library (~> 1.22)
   - FirebaseFirestore (12.12.0):
     - FirebaseCore (~> 12.12.0)
     - FirebaseCoreExtension (~> 12.12.0)
@@ -1551,7 +1538,6 @@ DEPENDENCIES:
   - firebase_app_check (from `.symlinks/plugins/firebase_app_check/ios`)
   - firebase_auth (from `.symlinks/plugins/firebase_auth/ios`)
   - firebase_core (from `.symlinks/plugins/firebase_core/ios`)
-  - firebase_database (from `.symlinks/plugins/firebase_database/ios`)
   - firebase_storage (from `.symlinks/plugins/firebase_storage/ios`)
   - Flutter (from `Flutter`)
   - google_sign_in_ios (from `.symlinks/plugins/google_sign_in_ios/darwin`)
@@ -1575,7 +1561,6 @@ SPEC REPOS:
     - FirebaseCore
     - FirebaseCoreExtension
     - FirebaseCoreInternal
-    - FirebaseDatabase
     - FirebaseFirestore
     - FirebaseFirestoreInternal
     - FirebaseInstallations
@@ -1609,8 +1594,6 @@ EXTERNAL SOURCES:
     :path: ".symlinks/plugins/firebase_auth/ios"
   firebase_core:
     :path: ".symlinks/plugins/firebase_core/ios"
-  firebase_database:
-    :path: ".symlinks/plugins/firebase_database/ios"
   firebase_storage:
     :path: ".symlinks/plugins/firebase_storage/ios"
   Flutter:
@@ -1636,7 +1619,6 @@ SPEC CHECKSUMS:
   firebase_app_check: 5b83925ced1a26b3491a38a55858424e92c15c61
   firebase_auth: b0aa0a5964e23fba1bf7f32603437edc33b889c4
   firebase_core: 9156a152117c843440b0b990c785aa0259bc5447
-  firebase_database: 9eff3255f2e09e55b7b7636c077bbe19af8f522a
   firebase_storage: ef547439afc96fe8ee856de3878ed28e1c5a88e8
   FirebaseAnalytics: db0dca7e35a503ddf6869e457f4926dc35afe216
   FirebaseAppCheck: 0194af00329809d8ce918b5244edc18edbd5b4e0
@@ -1646,7 +1628,6 @@ SPEC CHECKSUMS:
   FirebaseCore: f28af0427998cd53f8d4826bce17260e33224053
   FirebaseCoreExtension: ff6fd42eb5287e71d3e160450de6509733d9ead7
   FirebaseCoreInternal: 7c12fc3011d889085e765e317d7b9fd1cef97af9
-  FirebaseDatabase: 00d7d9fc5347273620a40807fa2d7bd5001a6b77
   FirebaseFirestore: 01e964d312cf17e56925c955b19798848775a7fd
   FirebaseFirestoreInternal: 9d9fd7eadbe0f19310fd7df06470a04baeaf3f36
   FirebaseInstallations: 4e6e162aa4abaaeeeb01dd00179dfc5ad9c2194e
