@@ -219,6 +219,7 @@ class AppDataService {
       final snap = await FirebaseFirestore.instance
           .collection(Collections.albums)
           .where('public', isEqualTo: true)
+          .where('approved', isEqualTo: true)
           .limit(6)
           .get();
 

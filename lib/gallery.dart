@@ -11,6 +11,7 @@ class PhotoGalleryScreen extends StatelessWidget {
     final snapshot = await FirebaseFirestore.instance
         .collection(Collections.albums)
         .where('public', isEqualTo: true)
+        .where('approved', isEqualTo: true)
         .get();
 
     final futures = snapshot.docs.map((doc) async {
