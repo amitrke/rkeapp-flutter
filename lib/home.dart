@@ -1,4 +1,5 @@
 import 'package:rkeapp/all_posts.dart';
+import 'package:rkeapp/content_safety.dart';
 import 'package:rkeapp/models.dart';
 import 'package:rkeapp/post_detail.dart';
 import 'package:flutter/material.dart';
@@ -132,8 +133,8 @@ class HomeWidget extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Consumer<AppData>(
-      builder: (context, appData, _) {
+    return Consumer2<AppData, BlockList>(
+      builder: (context, appData, blocks, _) {
         if (appData.loading) {
           return const Center(child: CircularProgressIndicator());
         }
@@ -174,7 +175,9 @@ class HomeWidget extends StatelessWidget {
                 ],
               ),
               const SizedBox(height: 8),
-              _buildPostsRow(appData.posts),
+              _buildPostsRow(
+                appData.posts.where((p) => !blocks.isBlocked(p.userId)).toList(),
+              ),
               const SizedBox(height: 24),
               _buildSectionHeader('Latest News'),
               const SizedBox(height: 8),
@@ -186,7 +189,9 @@ class HomeWidget extends StatelessWidget {
               const SizedBox(height: 24),
               _buildGalleryHeader(),
               const SizedBox(height: 8),
-              _buildGalleryRow(appData.albums),
+              _buildGalleryRow(
+                appData.albums.where((a) => !blocks.isBlocked(a.userId)).toList(),
+              ),
               const SizedBox(height: 24),
             ],
           ),

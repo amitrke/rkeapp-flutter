@@ -1,8 +1,10 @@
 import 'package:rkeapp/collections.dart';
+import 'package:rkeapp/content_safety.dart';
 import 'package:rkeapp/image_utils.dart';
 import 'package:rkeapp/models.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
 
 class PhotoGalleryScreen extends StatelessWidget {
   const PhotoGalleryScreen({super.key});
@@ -59,7 +61,10 @@ class PhotoGalleryScreen extends StatelessWidget {
           );
         }
 
-        final albums = snapshot.data ?? const <AppAlbum>[];
+        final blocks = context.watch<BlockList>();
+        final albums = (snapshot.data ?? const <AppAlbum>[])
+            .where((album) => !blocks.isBlocked(album.userId))
+            .toList();
         if (albums.isEmpty) {
           return const Center(
             child: Padding(
@@ -261,6 +266,15 @@ class AlbumDetailScreen extends StatelessWidget {
       appBar: AppBar(
         title: Text(album.name),
         backgroundColor: Colors.blueAccent,
+        actions: [
+          ContentActionsMenu(
+            itemId: album.id,
+            itemType: 'album',
+            itemTitle: album.name,
+            ownerId: album.userId,
+            ownerName: '',
+          ),
+        ],
       ),
       body: FutureBuilder<List<String>>(
         future: _loadImages('m'),

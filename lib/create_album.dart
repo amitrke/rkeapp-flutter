@@ -5,6 +5,7 @@ import 'collections.dart' show Collections;
 import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
 import 'image_utils.dart' show resizeAndUploadImage;
+import 'web_api.dart';
 
 /// Create or edit an album.
 ///
@@ -128,26 +129,16 @@ class _CreateAlbumScreenState extends State<CreateAlbumScreen> {
         docId = widget.albumId!;
       } else {
         data['createDate'] = now;
-        data['approved'] = false;
         final ref = await col.add(data);
         docId = ref.id;
       }
 
       if (publish) {
-        await FirebaseFirestore.instance
-            .collection(Collections.moderationQueue)
-            .doc(docId)
-            .set({
+        // The server writes the moderationQueue entry; clients can't.
+        await postWebApi('submitForReview', {
           'itemId': docId,
           'itemType': 'album',
-          'userId': widget.userId,
-          'status': 'pending',
-          'submittedAt': now,
-          'reviewedAt': null,
-          'reviewedBy': null,
-          'rejectionReason': null,
-          'title': name,
-        }, SetOptions(merge: true));
+        });
       }
 
       if (mounted) {

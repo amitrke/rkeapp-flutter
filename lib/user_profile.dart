@@ -1,7 +1,9 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
 
 import 'collections.dart';
+import 'content_safety.dart';
 import 'gallery.dart';
 import 'image_utils.dart';
 import 'models.dart';
@@ -67,6 +69,34 @@ class UserProfileScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    if (context.watch<BlockList>().isBlocked(userId)) {
+      return Scaffold(
+        appBar: AppBar(title: const Text('Profile')),
+        body: Center(
+          child: Padding(
+            padding: const EdgeInsets.all(24),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                const Icon(Icons.block, size: 48, color: Colors.grey),
+                const SizedBox(height: 12),
+                const Text(
+                  "You've blocked this user, so their posts and albums are hidden.",
+                  textAlign: TextAlign.center,
+                  style: TextStyle(color: Colors.grey),
+                ),
+                const SizedBox(height: 12),
+                OutlinedButton(
+                  onPressed: () => blockList.unblock(userId),
+                  child: const Text('Unblock'),
+                ),
+              ],
+            ),
+          ),
+        ),
+      );
+    }
+
     return Scaffold(
       appBar: AppBar(title: const Text('Profile')),
       body: FutureBuilder<_ProfileData>(

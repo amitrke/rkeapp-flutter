@@ -2,10 +2,11 @@ import 'dart:convert';
 
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'collections.dart' show Collections;
+import 'content_safety.dart' show ContentActionsMenu;
 import 'image_utils.dart' show resolveStorageImage;
 import 'package:flutter/material.dart';
 
-class PostDetailScreen extends StatelessWidget {
+class PostDetailScreen extends StatefulWidget {
   final String postId;
   final String initialTitle;
   final String initialAuthorName;
@@ -16,6 +17,17 @@ class PostDetailScreen extends StatelessWidget {
     required this.initialTitle,
     required this.initialAuthorName,
   });
+
+  @override
+  State<PostDetailScreen> createState() => _PostDetailScreenState();
+}
+
+class _PostDetailScreenState extends State<PostDetailScreen> {
+  late final Future<Map<String, dynamic>?> _postFuture = _loadPost();
+
+  String get postId => widget.postId;
+  String get initialTitle => widget.initialTitle;
+  String get initialAuthorName => widget.initialAuthorName;
 
   Future<Map<String, dynamic>?> _loadPost() async {
     final doc = await FirebaseFirestore.instance.collection(Collections.posts).doc(postId).get();
@@ -64,9 +76,25 @@ class PostDetailScreen extends StatelessWidget {
       appBar: AppBar(
         title: Text(initialTitle),
         backgroundColor: Colors.blueAccent,
+        actions: [
+          FutureBuilder<Map<String, dynamic>?>(
+            future: _postFuture,
+            builder: (context, snapshot) {
+              final post = snapshot.data;
+              if (post == null) return const SizedBox.shrink();
+              return ContentActionsMenu(
+                itemId: postId,
+                itemType: 'post',
+                itemTitle: post['title'] as String? ?? initialTitle,
+                ownerId: post['userId'] as String? ?? '',
+                ownerName: initialAuthorName,
+              );
+            },
+          ),
+        ],
       ),
       body: FutureBuilder<Map<String, dynamic>?>(
-        future: _loadPost(),
+        future: _postFuture,
         builder: (context, snapshot) {
           if (snapshot.connectionState == ConnectionState.waiting) {
             return const Center(child: CircularProgressIndicator());
