@@ -1,1 +1,17 @@
-Metadata upload only. No review attachment.
+PURPOSE AND AUDIENCE
+Roorkee - Community App is the mobile app for Roorkee.org, a community site for people who live in, studied in, or have lived in Roorkee, Uttarakhand, India. It brings together posts and photo albums shared by community members, local news, upcoming holidays and events, and the local weather.
+
+ACCESS
+No login is needed to browse: Home, Gallery, Weather and every post and album open without an account. Signing in (Sign in with Apple or Google) is only needed to post, create albums, report content or block users. Any Apple ID works, so no demo account is needed. Tap the profile icon on Home or the You tab, then Sign in.
+
+MAIN FEATURES
+- Post: sign in, tap New post, add a title, text and optional photos, then Submit for Review. A moderator reviews every post and album before it is published.
+- Report and block: open any post or album and tap the ⋮ menu at the top right. Report offers reasons (spam, harassment or hate speech, sexual or violent content, illegal activity, other) plus an optional note; moderators review reports within 24 hours. Block user hides all of that person's content at once and can be undone from the same menu or their profile.
+- Delete account: You tab, gear icon (Settings), Delete account. After confirming and signing in again, the account, profile, posts, albums, photos and notifications are permanently deleted.
+- Permissions: photo library access, only when adding photos to a post or album.
+
+EXTERNAL SERVICES
+Firebase (Authentication, Cloud Firestore, Cloud Storage, App Check); Sign in with Apple and Google Sign-In; the Roorkee.org web API (our own site) for moderation and account deletion; OpenWeatherMap for weather; NewsAPI, NewsData.io and SerpApi for news, and Calendarific for holidays, all fetched by our server. No payments, advertising, tracking or AI services.
+
+REGIONS
+The app works the same in every region. Content is about Roorkee, but nothing is restricted by location.
