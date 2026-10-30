@@ -7,7 +7,7 @@ set -euo pipefail
 #   ./scripts/run-fastlane.sh android-metadata /absolute/path/to/play_store_key.json [track]
 #   ./scripts/run-fastlane.sh android-diagnose /absolute/path/to/play_store_key.json
 #   ./scripts/run-fastlane.sh ios-metadata
-#   ./scripts/run-fastlane.sh ios-submit
+#   ./scripts/run-fastlane.sh ios-submit <build_number>
 #
 # On Windows PowerShell, use .\scripts\run-fastlane.ps1 instead.
 
@@ -24,21 +24,22 @@ Usage:
   ./scripts/run-fastlane.sh android-metadata <play_store_key_json_path> [track]
   ./scripts/run-fastlane.sh android-diagnose <play_store_key_json_path>
   ./scripts/run-fastlane.sh ios-metadata
-  ./scripts/run-fastlane.sh ios-submit
+  ./scripts/run-fastlane.sh ios-submit <build_number>
 
 Windows PowerShell:
   .\scripts\run-fastlane.ps1 android-screenshots <play_store_key_json_path>
   .\scripts\run-fastlane.ps1 android-metadata <play_store_key_json_path> [track]
   .\scripts\run-fastlane.ps1 android-diagnose <play_store_key_json_path>
   .\scripts\run-fastlane.ps1 ios-metadata
-  .\scripts\run-fastlane.ps1 ios-submit
+  .\scripts\run-fastlane.ps1 ios-submit <build_number>
 
 Actions:
   android-screenshots  Upload Android screenshots (Fastlane lane: android upload_screenshots)
   android-metadata     Upload Android store listing metadata (lane: android upload_metadata)
   android-diagnose     Diagnose Android Play app state (lane: android diagnose_play_state)
   ios-metadata         Upload iOS metadata (lane: ios upload_metadata)
-  ios-submit           Submit iOS app for review (lane: ios submit_for_review)
+  ios-submit           Submit a TestFlight build for review (lane: ios promote build:<n>).
+                       Usually run through .github/workflows/promote.yml instead.
 
 Required env vars for iOS actions:
   APP_STORE_CONNECT_KEY_ID
@@ -161,6 +162,8 @@ run_ios_metadata() {
 }
 
 run_ios_submit() {
+  local build_number="$1"
+
   require_env APP_STORE_CONNECT_KEY_ID
   require_env APP_STORE_CONNECT_ISSUER_ID
   require_env APP_STORE_CONNECT_API_KEY
@@ -168,7 +171,7 @@ run_ios_submit() {
   export IOS_APP_IDENTIFIER="${IOS_APP_IDENTIFIER:-$IOS_APP_IDENTIFIER_DEFAULT}"
 
   ensure_bundle
-  bundle exec fastlane ios submit_for_review
+  bundle exec fastlane ios promote build:"$build_number"
 }
 
 action="${1:-}"
@@ -199,7 +202,11 @@ case "$action" in
     run_ios_metadata
     ;;
   ios-submit)
-    run_ios_submit
+    if [[ $# -lt 2 ]]; then
+      usage
+      exit 1
+    fi
+    run_ios_submit "$2"
     ;;
   -h|--help|help|"")
     usage
