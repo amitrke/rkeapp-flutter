@@ -10,6 +10,12 @@ class AppDataService {
     _loadAll();
   }
 
+  /// Re-fetches everything; used by "Try again" on error states.
+  Future<void> reload() async {
+    appData.setLoading();
+    await _loadAll();
+  }
+
   Future<void> _loadAll() async {
     try {
       await Future.wait([
@@ -172,6 +178,11 @@ class AppDataService {
       final weatherCurrent = WeatherCurrent(
         dt: (currentRaw['dt'] as num?)?.toInt() ?? 0,
         temp: (currentRaw['temp'] as num?)?.toDouble() ?? 0.0,
+        feelsLike: (currentRaw['feels_like'] as num?)?.toDouble() ??
+            (currentRaw['temp'] as num?)?.toDouble() ??
+            0.0,
+        windDeg: (currentRaw['wind_deg'] as num?)?.toInt() ?? 0,
+        sunset: (currentRaw['sunset'] as num?)?.toInt() ?? 0,
         humidity: (currentRaw['humidity'] as num?)?.toInt() ?? 0,
         pressure: (currentRaw['pressure'] as num?)?.toInt() ?? 0,
         windSpeed: (currentRaw['wind_speed'] as num?)?.toDouble() ?? 0.0,
@@ -219,6 +230,7 @@ class AppDataService {
       final snap = await FirebaseFirestore.instance
           .collection(Collections.albums)
           .where('public', isEqualTo: true)
+          .where('approved', isEqualTo: true)
           .limit(6)
           .get();
 

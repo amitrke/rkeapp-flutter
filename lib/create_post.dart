@@ -6,6 +6,7 @@ import 'collections.dart' show Collections;
 import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
 import 'image_utils.dart' show resizeAndUploadImage;
+import 'web_api.dart';
 
 /// Create or edit a post.
 ///
@@ -180,27 +181,16 @@ class _CreatePostScreenState extends State<CreatePostScreen> {
         docId = widget.postId!;
       } else {
         data['createDate'] = now;
-        data['approved'] = false;
         final ref = await col.add(data);
         docId = ref.id;
       }
 
       if (publish) {
-        // Write to moderationQueue so admins can review
-        await FirebaseFirestore.instance
-            .collection(Collections.moderationQueue)
-            .doc(docId)
-            .set({
+        // The server writes the moderationQueue entry; clients can't.
+        await postWebApi('submitForReview', {
           'itemId': docId,
           'itemType': 'post',
-          'userId': widget.userId,
-          'status': 'pending',
-          'submittedAt': now,
-          'reviewedAt': null,
-          'reviewedBy': null,
-          'rejectionReason': null,
-          'title': title,
-        }, SetOptions(merge: true));
+        });
       }
 
       if (mounted) {
@@ -240,8 +230,7 @@ class _CreatePostScreenState extends State<CreatePostScreen> {
               width: 20,
               height: 20,
               child: CircularProgressIndicator(
-                strokeWidth: 2,
-                color: Colors.white,
+                strokeWidth: 2
               ),
             ),
           ),
@@ -412,7 +401,7 @@ class _ImageThumb extends StatelessWidget {
             errorBuilder: (_, __, ___) => Container(
               width: 80,
               height: 80,
-              color: Colors.grey.shade300,
+              color: Theme.of(context).colorScheme.surfaceContainerHighest,
               child: const Icon(Icons.broken_image_outlined),
             ),
           ),

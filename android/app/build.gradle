@@ -27,6 +27,8 @@ def flutterVersionName = localProperties.getProperty('flutter.versionName') ?: '
 android {
     namespace "org.roorkee.RkeApp"
     compileSdk 36
+    // The highest NDK any plugin asks for (jni); NDKs are backward compatible.
+    ndkVersion "28.2.13676358"
 
     sourceSets {
         main.java.srcDirs += 'src/main/kotlin'
@@ -58,9 +60,12 @@ android {
 
     buildTypes {
         release {
-            if (keystorePropertiesFile.exists()) {
-                signingConfig signingConfigs.release
-            }
+            // Without key.properties (local builds, build.yml in CI) fall back
+            // to the debug key so the APK can still be sideloaded. release.yml
+            // refuses to upload a debug-signed bundle.
+            signingConfig keystorePropertiesFile.exists()
+                    ? signingConfigs.release
+                    : signingConfigs.debug
         }
     }
 

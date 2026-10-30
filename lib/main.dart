@@ -1,17 +1,20 @@
-import 'contact.dart';
+import 'content_safety.dart';
 import 'create_post.dart';
 import 'gallery.dart';
 import 'home.dart';
 import 'models.dart';
 import 'myposts.dart';
 import 'posts.dart';
+import 'settings.dart';
+import 'sign_in.dart';
+import 'theme.dart';
 import 'weather.dart';
+import 'widgets.dart';
 import 'package:firebase_app_check/firebase_app_check.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
-import 'dart:io' show Platform;
 import 'auth.dart';
 import 'dart:async';
 
@@ -56,6 +59,7 @@ Future<void> main() async {
   runApp(MultiProvider(providers: [
     ChangeNotifierProvider<RkeUser>.value(value: authService.rkeUser),
     ChangeNotifierProvider<AppData>.value(value: appDataService.appData),
+    ChangeNotifierProvider<BlockList>.value(value: blockList),
   ], child: const MyApp()));
 }
 
@@ -66,6 +70,9 @@ class MyApp extends StatelessWidget {
     return MaterialApp(
       title: 'RkeApp',
       debugShowCheckedModeBanner: false,
+      theme: buildTheme(Brightness.light),
+      darkTheme: buildTheme(Brightness.dark),
+      themeMode: ThemeMode.system,
       home: const MyStatefulWidget(),
     );
   }
@@ -78,15 +85,14 @@ class MyStatefulWidget extends StatefulWidget {
   MyStatefulWidgetState createState() => MyStatefulWidgetState();
 }
 
+/// Root shell: bottom navigation between Home, Gallery, Weather and You.
 class MyStatefulWidgetState extends State<MyStatefulWidget> {
-  int _selectedIndex = 0;
+  static const int _home = 0;
+  static const int _gallery = 1;
+  static const int _weather = 2;
+  static const int _you = 3;
 
-  static const List<String> _pageTitles = <String>[
-    'Home',
-    'Account',
-    'Gallery',
-    'Weather',
-  ];
+  int _selectedIndex = _home;
 
   void _onItemTapped(int index) {
     setState(() {
@@ -94,244 +100,171 @@ class MyStatefulWidgetState extends State<MyStatefulWidget> {
     });
   }
 
-  void _navigateFromDrawer(BuildContext context, int index) {
-    Navigator.of(context).pop();
-    if (_selectedIndex != index) {
-      _onItemTapped(index);
+  Widget _body(BuildContext context) {
+    switch (_selectedIndex) {
+      case _gallery:
+        return const PhotoGalleryScreen();
+      case _weather:
+        return const WeatherDetailsWidget();
+      case _you:
+        return const MyAccountScreen();
+      default:
+        return HomeWidget(
+          onOpenWeather: () => _onItemTapped(_weather),
+          onOpenGallery: () => _onItemTapped(_gallery),
+          onOpenAlbum: (album) {
+            Navigator.of(context).push(
+              MaterialPageRoute(
+                builder: (_) => AlbumDetailScreen(album: album),
+              ),
+            );
+          },
+        );
     }
   }
 
-  Future<void> _handleAccountAction(BuildContext context, RkeUser user) async {
-    Navigator.of(context).pop();
-    if (user.uid.isNotEmpty) {
-      await authService.signOut();
-      return;
-    }
-
-    if (!kIsWeb && Platform.isIOS) {
-      await _showSignInSheet(context);
-    } else {
-      await authService.googleSignIn();
-    }
-  }
-
-  Future<void> _showSignInSheet(BuildContext context) async {
-    await showModalBottomSheet<void>(
-      context: context,
-      builder: (ctx) => SafeArea(
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            ListTile(
-              leading: const Icon(Icons.login),
-              title: const Text('Sign in with Google'),
-              onTap: () async {
-                Navigator.of(ctx).pop();
-                final signedInUser = await authService.googleSignIn();
-                if (!context.mounted || signedInUser != null) {
-                  return;
+  PreferredSizeWidget _appBar(BuildContext context, RkeUser user) {
+    final scheme = Theme.of(context).colorScheme;
+    final text = Theme.of(context).textTheme;
+    switch (_selectedIndex) {
+      case _gallery:
+        return AppBar(title: const Text('Gallery'));
+      case _weather:
+        return AppBar(
+          title: const Text('Weather'),
+          actions: [
+            Consumer<AppData>(
+              builder: (context, appData, _) {
+                final details = appData.weatherDetails;
+                if (details == null || details.current.dt == 0) {
+                  return const SizedBox.shrink();
                 }
-                ScaffoldMessenger.of(context).showSnackBar(
-                  const SnackBar(
-                    content: Text('Google sign-in failed. Please try again.'),
-                  ),
+                final updated = DateTime.fromMillisecondsSinceEpoch(
+                  (details.current.dt + details.timezoneOffset) * 1000,
+                  isUtc: true,
                 );
-              },
-            ),
-            ListTile(
-              leading: const Icon(Icons.apple),
-              title: const Text('Sign in with Apple'),
-              onTap: () async {
-                Navigator.of(ctx).pop();
-                final signedInUser = await authService.appleSignIn();
-                if (!context.mounted || signedInUser != null) {
-                  return;
-                }
-                ScaffoldMessenger.of(context).showSnackBar(
-                  const SnackBar(
-                    content: Text(
-                      'Apple sign-in failed. Verify Sign in with Apple in Apple/Firebase config and try again.',
-                    ),
+                return Padding(
+                  padding: const EdgeInsets.only(right: Space.l),
+                  child: Text(
+                    'Updated ${clockLabel(updated, minutes: true)}',
+                    style: text.bodySmall
+                        ?.copyWith(color: scheme.onSurfaceVariant),
                   ),
                 );
               },
             ),
           ],
-        ),
-      ),
-    );
-  }
-
-  Widget _buildDrawerHeader(RkeUser user) {
-    if (user.uid.isNotEmpty) {
-      return UserAccountsDrawerHeader(
-        margin: EdgeInsets.zero,
-        accountName: Text(user.name.isNotEmpty ? user.name : 'Guest'),
-        accountEmail: Text(
-          user.email.isNotEmpty ? user.email : 'Welcome to Roorkee',
-        ),
-        currentAccountPicture: CircleAvatar(
-          backgroundImage: NetworkImage(user.photoURL),
-        ),
-        decoration: const BoxDecoration(
-          color: Colors.blueAccent,
-        ),
-      );
-    }
-
-    return Container(
-      width: double.infinity,
-      padding: const EdgeInsets.fromLTRB(20, 24, 20, 20),
-      decoration: const BoxDecoration(
-        color: Colors.blueAccent,
-      ),
-      child: const Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          CircleAvatar(
-            radius: 28,
-            backgroundColor: Colors.white,
-            child: Icon(Icons.person_outline, color: Colors.blueAccent, size: 30),
-          ),
-          SizedBox(height: 14),
-          Text(
-            'Welcome to Roorkee',
-            style: TextStyle(
-              color: Colors.white,
-              fontSize: 18,
-              fontWeight: FontWeight.bold,
+        );
+      case _you:
+        return AppBar(
+          title: const Text('You'),
+          actions: [
+            IconButton(
+              icon: const Icon(Icons.settings_outlined),
+              tooltip: 'Settings',
+              onPressed: () => Navigator.of(context).push(
+                MaterialPageRoute(builder: (_) => const SettingsScreen()),
+              ),
+            ),
+          ],
+        );
+      default:
+        return AppBar(
+          title: Text(
+            'Roorkee',
+            style: text.headlineSmall?.copyWith(
+              color: scheme.primary,
+              fontWeight: FontWeight.w800,
+              letterSpacing: -0.3,
             ),
           ),
-          SizedBox(height: 4),
-          Text(
-            'Sign in to upload photos and access your posts.',
-            style: TextStyle(color: Colors.white70),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildDrawerItem({
-    required BuildContext context,
-    required int index,
-    required IconData icon,
-    required String title,
-  }) {
-    return ListTile(
-      leading: Icon(icon),
-      title: Text(title),
-      selected: _selectedIndex == index,
-      selectedTileColor: Colors.blue.shade50,
-      selectedColor: Colors.blueAccent,
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(10),
-      ),
-      contentPadding: const EdgeInsets.symmetric(horizontal: 20),
-      onTap: () => _navigateFromDrawer(context, index),
-    );
-  }
-
-  Widget navigate(BuildContext context, int index) {
-    if (index == 0) {
-      return HomeWidget(
-        onOpenWeather: () => _onItemTapped(3),
-        onOpenGallery: () => _onItemTapped(2),
-        onOpenAlbum: (album) {
-          Navigator.of(context).push(
-            MaterialPageRoute(
-              builder: (_) => AlbumDetailScreen(album: album),
+          actions: [
+            Padding(
+              padding: const EdgeInsets.only(right: Space.s),
+              child: IconButton(
+                tooltip: user.uid.isNotEmpty ? 'Your profile' : 'Sign in',
+                onPressed: () => user.uid.isNotEmpty
+                    ? _onItemTapped(_you)
+                    : startSignIn(context),
+                icon: _Avatar(user: user),
+              ),
             ),
-          );
-        },
-      );
-    } else if (index == 1) {
-      return const MyAccountScreen();
-    } else if (index == 2) {
-      return const PhotoGalleryScreen();
-    } else {
-      return const WeatherDetailsWidget();
+          ],
+        );
     }
   }
 
   @override
   Widget build(BuildContext context) {
     final user = Provider.of<RkeUser>(context, listen: true);
+    final showFab = user.uid.isNotEmpty &&
+        (_selectedIndex == _home || _selectedIndex == _you);
 
     return Scaffold(
-      drawer: Drawer(
-        child: SafeArea(
-          child: Column(
-            children: [
-              _buildDrawerHeader(user),
-              const SizedBox(height: 8),
-              _buildDrawerItem(
-                context: context,
-                index: 0,
-                icon: Icons.home,
-                title: 'Home',
-              ),
-              _buildDrawerItem(
-                context: context,
-                index: 1,
-                icon: Icons.account_box,
-                title: 'Account',
-              ),
-              _buildDrawerItem(
-                context: context,
-                index: 2,
-                icon: Icons.photo_library,
-                title: 'Gallery',
-              ),
-              _buildDrawerItem(
-                context: context,
-                index: 3,
-                icon: Icons.wb_sunny,
-                title: 'Weather',
-              ),
-              const Divider(),
-              ListTile(
-                leading: const Icon(Icons.mail_outline),
-                title: const Text('Contact'),
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(10),
-                ),
-                contentPadding: const EdgeInsets.symmetric(horizontal: 20),
-                onTap: () {
-                  Navigator.of(context).pop();
-                  Navigator.of(context).push(
-                    MaterialPageRoute(builder: (_) => const ContactScreen()),
-                  );
-                },
-              ),
-              ListTile(
-                leading: Icon(
-                  user.uid.isNotEmpty ? Icons.logout : Icons.login,
-                ),
-                title: Text(user.uid.isNotEmpty ? 'Logout' : 'Login'),
-                onTap: () => _handleAccountAction(context, user),
-              ),
-            ],
-          ),
-        ),
-      ),
-      appBar: AppBar(
-        title: Text(_pageTitles[_selectedIndex]),
-        backgroundColor: Colors.blueAccent,
-      ),
-      body: navigate(context, _selectedIndex),
-      floatingActionButton: _selectedIndex == 1 && user.uid != ''
-          ? FloatingActionButton(
+      appBar: _appBar(context, user),
+      body: _body(context),
+      floatingActionButton: showFab
+          ? FloatingActionButton.extended(
               onPressed: () => Navigator.of(context).push(
                 MaterialPageRoute(
                   builder: (_) => CreatePostScreen(userId: user.uid),
                 ),
               ),
-              tooltip: 'New Post',
-              child: const Icon(Icons.edit),
+              icon: const Icon(Icons.edit_outlined),
+              label: const Text('New post'),
             )
           : null,
+      bottomNavigationBar: NavigationBar(
+        selectedIndex: _selectedIndex,
+        onDestinationSelected: _onItemTapped,
+        destinations: const [
+          NavigationDestination(
+            icon: Icon(Icons.home_outlined),
+            selectedIcon: Icon(Icons.home),
+            label: 'Home',
+          ),
+          NavigationDestination(
+            icon: Icon(Icons.photo_library_outlined),
+            selectedIcon: Icon(Icons.photo_library),
+            label: 'Gallery',
+          ),
+          NavigationDestination(
+            icon: Icon(Icons.wb_cloudy_outlined),
+            selectedIcon: Icon(Icons.wb_cloudy),
+            label: 'Weather',
+          ),
+          NavigationDestination(
+            icon: Icon(Icons.person_outline),
+            selectedIcon: Icon(Icons.person),
+            label: 'You',
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _Avatar extends StatelessWidget {
+  final RkeUser user;
+  const _Avatar({required this.user});
+
+  @override
+  Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
+    final signedIn = user.uid.isNotEmpty;
+    final initial = user.name.isNotEmpty ? user.name[0].toUpperCase() : '';
+    return CircleAvatar(
+      radius: 16,
+      backgroundColor: scheme.primaryContainer,
+      foregroundColor: scheme.onPrimaryContainer,
+      backgroundImage: signedIn && user.photoURL.isNotEmpty
+          ? NetworkImage(user.photoURL)
+          : null,
+      child: signedIn && user.photoURL.isEmpty && initial.isNotEmpty
+          ? Text(initial, style: const TextStyle(fontWeight: FontWeight.w700))
+          : signedIn && user.photoURL.isNotEmpty
+              ? null
+              : const Icon(Icons.person_outline, size: 18),
     );
   }
 }

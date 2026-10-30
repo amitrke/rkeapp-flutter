@@ -39,13 +39,15 @@ Upload store listing metadata (title and descriptions) to Google Play
 
 Diagnose Google Play app state for release and metadata operations
 
-### android promote_to_production
+### android promote
 
 ```sh
-[bundle exec] fastlane android promote_to_production
+[bundle exec] fastlane android promote
 ```
 
-Promote the internal track release to production
+Promote a build from internal testing to production, with its release notes
+
+Options: build:<number> (required), rollout:<percent> (default 100)
 
 ### android prepare_screenshots
 
@@ -76,13 +78,15 @@ Upload curated iOS screenshots to App Store Connect
 
 Upload store listing metadata (description, keywords, release notes) to App Store Connect
 
-### ios submit_for_review
+### ios promote
 
 ```sh
-[bundle exec] fastlane ios submit_for_review
+[bundle exec] fastlane ios promote
 ```
 
-Submit the latest approved build for App Store review
+Submit a TestFlight build for App Review; it goes live once Apple approves it
+
+Options: build:<number> (required)
 
 ### ios prepare_screenshots
 

@@ -7,4 +7,7 @@ abstract final class Collections {
   static const String notifications = 'notifications';
   static const String moderationQueue = 'moderationQueue';
   static const String messages = 'messages';
+  static const String reports = 'reports';
+  /// Subcollection of users/{uid}: the user's block list.
+  static const String blocked = 'blocked';
 }

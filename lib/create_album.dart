@@ -5,6 +5,7 @@ import 'collections.dart' show Collections;
 import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
 import 'image_utils.dart' show resizeAndUploadImage;
+import 'web_api.dart';
 
 /// Create or edit an album.
 ///
@@ -128,26 +129,16 @@ class _CreateAlbumScreenState extends State<CreateAlbumScreen> {
         docId = widget.albumId!;
       } else {
         data['createDate'] = now;
-        data['approved'] = false;
         final ref = await col.add(data);
         docId = ref.id;
       }
 
       if (publish) {
-        await FirebaseFirestore.instance
-            .collection(Collections.moderationQueue)
-            .doc(docId)
-            .set({
+        // The server writes the moderationQueue entry; clients can't.
+        await postWebApi('submitForReview', {
           'itemId': docId,
           'itemType': 'album',
-          'userId': widget.userId,
-          'status': 'pending',
-          'submittedAt': now,
-          'reviewedAt': null,
-          'reviewedBy': null,
-          'rejectionReason': null,
-          'title': name,
-        }, SetOptions(merge: true));
+        });
       }
 
       if (mounted) {
@@ -188,7 +179,7 @@ class _CreateAlbumScreenState extends State<CreateAlbumScreen> {
                 width: 20,
                 height: 20,
                 child: CircularProgressIndicator(
-                    strokeWidth: 2, color: Colors.white),
+                    strokeWidth: 2),
               ),
             ),
         ],
@@ -251,13 +242,13 @@ class _CreateAlbumScreenState extends State<CreateAlbumScreen> {
                       Container(
                         height: 100,
                         decoration: BoxDecoration(
-                          border: Border.all(color: Colors.grey.shade300),
+                          border: Border.all(color: Theme.of(context).colorScheme.outlineVariant),
                           borderRadius: BorderRadius.circular(8),
                         ),
-                        child: const Center(
+                        child: Center(
                           child: Text(
                             'No photos yet',
-                            style: TextStyle(color: Colors.grey),
+                            style: TextStyle(color: Theme.of(context).colorScheme.onSurfaceVariant),
                           ),
                         ),
                       )
@@ -339,7 +330,7 @@ class _AlbumImageThumb extends StatelessWidget {
             _url,
             fit: BoxFit.cover,
             errorBuilder: (_, __, ___) => Container(
-              color: Colors.grey.shade300,
+              color: Theme.of(context).colorScheme.surfaceContainerHighest,
               child: const Icon(Icons.broken_image_outlined),
             ),
           ),

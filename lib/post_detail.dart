@@ -2,10 +2,12 @@ import 'dart:convert';
 
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'collections.dart' show Collections;
+import 'content_safety.dart' show ContentActionsMenu;
 import 'image_utils.dart' show resolveStorageImage;
 import 'package:flutter/material.dart';
+import 'widgets.dart';
 
-class PostDetailScreen extends StatelessWidget {
+class PostDetailScreen extends StatefulWidget {
   final String postId;
   final String initialTitle;
   final String initialAuthorName;
@@ -16,6 +18,17 @@ class PostDetailScreen extends StatelessWidget {
     required this.initialTitle,
     required this.initialAuthorName,
   });
+
+  @override
+  State<PostDetailScreen> createState() => _PostDetailScreenState();
+}
+
+class _PostDetailScreenState extends State<PostDetailScreen> {
+  late final Future<Map<String, dynamic>?> _postFuture = _loadPost();
+
+  String get postId => widget.postId;
+  String get initialTitle => widget.initialTitle;
+  String get initialAuthorName => widget.initialAuthorName;
 
   Future<Map<String, dynamic>?> _loadPost() async {
     final doc = await FirebaseFirestore.instance.collection(Collections.posts).doc(postId).get();
@@ -63,24 +76,33 @@ class PostDetailScreen extends StatelessWidget {
     return Scaffold(
       appBar: AppBar(
         title: Text(initialTitle),
-        backgroundColor: Colors.blueAccent,
+        actions: [
+          FutureBuilder<Map<String, dynamic>?>(
+            future: _postFuture,
+            builder: (context, snapshot) {
+              final post = snapshot.data;
+              if (post == null) return const SizedBox.shrink();
+              return ContentActionsMenu(
+                itemId: postId,
+                itemType: 'post',
+                itemTitle: post['title'] as String? ?? initialTitle,
+                ownerId: post['userId'] as String? ?? '',
+                ownerName: initialAuthorName,
+              );
+            },
+          ),
+        ],
       ),
       body: FutureBuilder<Map<String, dynamic>?>(
-        future: _loadPost(),
+        future: _postFuture,
         builder: (context, snapshot) {
           if (snapshot.connectionState == ConnectionState.waiting) {
             return const Center(child: CircularProgressIndicator());
           }
 
           if (snapshot.hasError || !snapshot.hasData || snapshot.data == null) {
-            return const Center(
-              child: Padding(
-                padding: EdgeInsets.all(24),
-                child: Text(
-                  'Unable to load the post right now.',
-                  style: TextStyle(color: Colors.grey),
-                ),
-              ),
+            return const ErrorState(
+              message: 'Couldn\'t load this post. Check your connection.',
             );
           }
 
@@ -112,13 +134,13 @@ class PostDetailScreen extends StatelessWidget {
                           vertical: 6,
                         ),
                         decoration: BoxDecoration(
-                          color: Colors.blue.shade50,
+                          color: Theme.of(context).colorScheme.primaryContainer,
                           borderRadius: BorderRadius.circular(20),
                         ),
                         child: Text(
                           category.toUpperCase(),
-                          style: const TextStyle(
-                            color: Colors.blueAccent,
+                          style: TextStyle(
+                            color: Theme.of(context).colorScheme.onPrimaryContainer,
                             fontWeight: FontWeight.bold,
                             fontSize: 12,
                           ),
@@ -135,8 +157,8 @@ class PostDetailScreen extends StatelessWidget {
                     const SizedBox(height: 8),
                     Text(
                       'By $initialAuthorName',
-                      style: const TextStyle(
-                        color: Colors.grey,
+                      style: TextStyle(
+                        color: Theme.of(context).colorScheme.onSurfaceVariant,
                         fontWeight: FontWeight.w600,
                       ),
                     ),
@@ -144,16 +166,16 @@ class PostDetailScreen extends StatelessWidget {
                       const SizedBox(height: 4),
                       Text(
                         _formatDate(updateDate),
-                        style: const TextStyle(color: Colors.grey),
+                        style: TextStyle(color: Theme.of(context).colorScheme.onSurfaceVariant),
                       ),
                     ],
                     if (intro.isNotEmpty) ...[
                       const SizedBox(height: 20),
                       Text(
                         intro,
-                        style: const TextStyle(
+                        style: TextStyle(
                           fontSize: 17,
-                          color: Colors.black87,
+                          color: Theme.of(context).colorScheme.onSurface,
                           height: 1.5,
                         ),
                       ),
@@ -175,11 +197,11 @@ class PostDetailScreen extends StatelessWidget {
                                 fit: BoxFit.cover,
                                 errorBuilder: (_, __, ___) => Container(
                                   width: 300,
-                                  color: Colors.grey.shade200,
+                                  color: Theme.of(context).colorScheme.surfaceContainerHighest,
                                   alignment: Alignment.center,
-                                  child: const Icon(
+                                  child: Icon(
                                     Icons.image_not_supported,
-                                    color: Colors.grey,
+                                    color: Theme.of(context).colorScheme.onSurfaceVariant,
                                   ),
                                 ),
                               ),
@@ -200,10 +222,10 @@ class PostDetailScreen extends StatelessWidget {
                       const SizedBox(height: 12),
                       Text(
                         body,
-                        style: const TextStyle(
+                        style: TextStyle(
                           fontSize: 16,
                           height: 1.65,
-                          color: Colors.black87,
+                          color: Theme.of(context).colorScheme.onSurface,
                         ),
                       ),
                     ],
