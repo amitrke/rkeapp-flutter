@@ -1,10 +1,13 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
 
 import 'collections.dart';
+import 'content_safety.dart';
 import 'gallery.dart';
 import 'image_utils.dart';
 import 'models.dart';
+import 'widgets.dart';
 import 'post_detail.dart';
 
 /// Public profile page for any user.
@@ -67,6 +70,18 @@ class UserProfileScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    if (context.watch<BlockList>().isBlocked(userId)) {
+      return Scaffold(
+        appBar: AppBar(title: const Text('Profile')),
+        body: EmptyState(
+          icon: Icons.block,
+          message: "You've blocked this user, so their posts and albums are hidden.",
+          actionLabel: 'Unblock',
+          onAction: () => blockList.unblock(userId),
+        ),
+      );
+    }
+
     return Scaffold(
       appBar: AppBar(title: const Text('Profile')),
       body: FutureBuilder<_ProfileData>(

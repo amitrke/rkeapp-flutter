@@ -1,3 +1,4 @@
+import 'content_safety.dart';
 import 'create_post.dart';
 import 'gallery.dart';
 import 'home.dart';
@@ -58,6 +59,7 @@ Future<void> main() async {
   runApp(MultiProvider(providers: [
     ChangeNotifierProvider<RkeUser>.value(value: authService.rkeUser),
     ChangeNotifierProvider<AppData>.value(value: appDataService.appData),
+    ChangeNotifierProvider<BlockList>.value(value: blockList),
   ], child: const MyApp()));
 }
 

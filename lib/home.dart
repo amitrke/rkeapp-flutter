@@ -1,4 +1,5 @@
 import 'package:rkeapp/all_posts.dart';
+import 'package:rkeapp/content_safety.dart';
 import 'package:rkeapp/models.dart';
 import 'package:rkeapp/post_detail.dart';
 import 'package:rkeapp/posts.dart';
@@ -33,8 +34,8 @@ class HomeWidget extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Consumer<AppData>(
-      builder: (context, appData, _) {
+    return Consumer2<AppData, BlockList>(
+      builder: (context, appData, blocks, _) {
         if (appData.loading) {
           return const Center(child: CircularProgressIndicator());
         }
@@ -44,6 +45,10 @@ class HomeWidget extends StatelessWidget {
             onRetry: appDataService.reload,
           );
         }
+        final posts =
+            appData.posts.where((p) => !blocks.isBlocked(p.userId)).toList();
+        final albums =
+            appData.albums.where((a) => !blocks.isBlocked(a.userId)).toList();
         return RefreshIndicator(
           onRefresh: appDataService.reload,
           child: ListView(
@@ -70,14 +75,14 @@ class HomeWidget extends StatelessWidget {
                 ),
               ),
               const SizedBox(height: Space.xs),
-              if (appData.posts.isEmpty)
+              if (posts.isEmpty)
                 const InlineEmpty('No community posts yet.')
               else ...[
                 _FeaturedPostCard(
-                  post: appData.posts.first,
-                  onTap: () => _openPost(context, appData.posts.first),
+                  post: posts.first,
+                  onTap: () => _openPost(context, posts.first),
                 ),
-                for (final post in appData.posts.skip(1))
+                for (final post in posts.skip(1))
                   _PostRow(post: post, onTap: () => _openPost(context, post)),
               ],
               const SizedBox(height: Space.xl),
@@ -94,7 +99,7 @@ class HomeWidget extends StatelessWidget {
               ),
               const SizedBox(height: Space.xs),
               _GalleryRow(
-                albums: appData.albums,
+                albums: albums,
                 onOpenAlbum: (album) => onOpenAlbum != null
                     ? onOpenAlbum!(album)
                     : onOpenGallery?.call(),

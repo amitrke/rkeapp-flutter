@@ -6,6 +6,7 @@ import 'collections.dart' show Collections;
 import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
 import 'image_utils.dart' show resizeAndUploadImage;
+import 'web_api.dart';
 
 /// Create or edit a post.
 ///
@@ -180,27 +181,16 @@ class _CreatePostScreenState extends State<CreatePostScreen> {
         docId = widget.postId!;
       } else {
         data['createDate'] = now;
-        data['approved'] = false;
         final ref = await col.add(data);
         docId = ref.id;
       }
 
       if (publish) {
-        // Write to moderationQueue so admins can review
-        await FirebaseFirestore.instance
-            .collection(Collections.moderationQueue)
-            .doc(docId)
-            .set({
+        // The server writes the moderationQueue entry; clients can't.
+        await postWebApi('submitForReview', {
           'itemId': docId,
           'itemType': 'post',
-          'userId': widget.userId,
-          'status': 'pending',
-          'submittedAt': now,
-          'reviewedAt': null,
-          'reviewedBy': null,
-          'rejectionReason': null,
-          'title': title,
-        }, SetOptions(merge: true));
+        });
       }
 
       if (mounted) {

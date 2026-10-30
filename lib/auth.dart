@@ -7,11 +7,12 @@ import 'models.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:crypto/crypto.dart';
 import 'package:firebase_auth/firebase_auth.dart';
-import 'package:firebase_storage/firebase_storage.dart';
 import 'package:google_sign_in/google_sign_in.dart';
 import 'package:flutter/foundation.dart';
 import 'package:http/http.dart' as http;
 import 'package:sign_in_with_apple/sign_in_with_apple.dart';
+
+import 'web_api.dart';
 
 class AccountDeletionResult {
   final bool deleted;
@@ -246,8 +247,9 @@ class AuthService {
         }
       }
 
-      await _deleteUserOwnedData(refreshedUser.uid);
-      await refreshedUser.delete();
+      // The server deletes the user's content, Storage files and Auth account.
+      // It requires a recent sign-in, so send the token minted by the reauth above.
+      await postWebApi('deleteAccount', const {}, forceRefreshToken: true);
       await _auth.signOut();
       if (!kIsWeb && providers.contains('google.com')) {
         await GoogleSignIn.instance.signOut();
@@ -257,6 +259,17 @@ class AuthService {
           ? 'Your account and associated data were deleted.'
           : 'Your account and associated data were deleted. ${warnings.join(' ')}';
       return AccountDeletionResult(deleted: true, message: message);
+    } on WebApiException catch (error) {
+      if (error.code == 'recent-login-required') {
+        return const AccountDeletionResult(
+          deleted: false,
+          message: 'Please reauthenticate and try deleting your account again.',
+        );
+      }
+      return AccountDeletionResult(
+        deleted: false,
+        message: 'Could not delete your account right now: ${error.message}',
+      );
     } on FirebaseAuthException catch (error) {
       if (error.code == 'requires-recent-login') {
         return const AccountDeletionResult(
@@ -392,48 +405,6 @@ class AuthService {
     }
 
     return true;
-  }
-
-  Future<void> _deleteUserOwnedData(String userId) async {
-    await _deleteDocsByUserId(Collections.notifications, userId);
-    await _deleteDocsByUserId(Collections.moderationQueue, userId);
-    await _deleteDocsByUserId(Collections.posts, userId);
-    await _deleteDocsByUserId(Collections.albums, userId);
-    await FirebaseFirestore.instance.collection(Collections.users).doc(userId).delete();
-    await _deleteStorageFolder(FirebaseStorage.instance.ref('users/$userId'));
-  }
-
-  Future<void> _deleteDocsByUserId(String collection, String userId) async {
-    while (true) {
-      final snapshot = await FirebaseFirestore.instance
-          .collection(collection)
-          .where('userId', isEqualTo: userId)
-          .limit(100)
-          .get();
-      if (snapshot.docs.isEmpty) {
-        return;
-      }
-
-      final batch = FirebaseFirestore.instance.batch();
-      for (final doc in snapshot.docs) {
-        batch.delete(doc.reference);
-      }
-      await batch.commit();
-
-      if (snapshot.docs.length < 100) {
-        return;
-      }
-    }
-  }
-
-  Future<void> _deleteStorageFolder(Reference reference) async {
-    final items = await reference.listAll();
-    for (final prefix in items.prefixes) {
-      await _deleteStorageFolder(prefix);
-    }
-    for (final item in items.items) {
-      await item.delete();
-    }
   }
 
   void updateUserData(User user) async {

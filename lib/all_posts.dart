@@ -1,8 +1,10 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
 import 'theme.dart';
+import 'package:provider/provider.dart';
 
 import 'collections.dart';
+import 'content_safety.dart';
 import 'post_detail.dart';
 import 'user_profile.dart';
 
@@ -105,6 +107,13 @@ class _AllPostsScreenState extends State<AllPostsScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final blocks = context.watch<BlockList>();
+    final docs = _docs
+        .where((doc) => !blocks.isBlocked(
+              (doc.data() as Map<String, dynamic>)['userId'] as String? ?? '',
+            ))
+        .toList();
+
     return Scaffold(
       appBar: AppBar(title: const Text('All Posts')),
       body: Column(
@@ -131,7 +140,7 @@ class _AllPostsScreenState extends State<AllPostsScreen> {
           const Divider(height: 1),
           // Posts list
           Expanded(
-            child: _docs.isEmpty && !_loading
+            child: docs.isEmpty && !_loading
                 ? Center(
                     child: Text(
                       'No posts found.',
@@ -139,9 +148,9 @@ class _AllPostsScreenState extends State<AllPostsScreen> {
                     ),
                   )
                 : ListView.builder(
-                    itemCount: _docs.length + (_hasMore ? 1 : 0),
+                    itemCount: docs.length + (_hasMore ? 1 : 0),
                     itemBuilder: (context, i) {
-                      if (i == _docs.length) {
+                      if (i == docs.length) {
                         return Padding(
                           padding: const EdgeInsets.all(16),
                           child: Center(
@@ -155,9 +164,9 @@ class _AllPostsScreenState extends State<AllPostsScreen> {
                         );
                       }
                       return _PostCard(
-                        doc: _docs[i],
+                        doc: docs[i],
                         authorNameFuture: _authorName(
-                          (_docs[i].data() as Map<String, dynamic>)['userId']
+                          (docs[i].data() as Map<String, dynamic>)['userId']
                                   as String? ??
                               '',
                         ),
