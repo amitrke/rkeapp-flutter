@@ -4,6 +4,7 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'collections.dart' show Collections;
 import 'image_utils.dart' show resolveStorageImage;
 import 'package:flutter/material.dart';
+import 'widgets.dart';
 
 class PostDetailScreen extends StatelessWidget {
   final String postId;
@@ -63,7 +64,6 @@ class PostDetailScreen extends StatelessWidget {
     return Scaffold(
       appBar: AppBar(
         title: Text(initialTitle),
-        backgroundColor: Colors.blueAccent,
       ),
       body: FutureBuilder<Map<String, dynamic>?>(
         future: _loadPost(),
@@ -73,14 +73,8 @@ class PostDetailScreen extends StatelessWidget {
           }
 
           if (snapshot.hasError || !snapshot.hasData || snapshot.data == null) {
-            return const Center(
-              child: Padding(
-                padding: EdgeInsets.all(24),
-                child: Text(
-                  'Unable to load the post right now.',
-                  style: TextStyle(color: Colors.grey),
-                ),
-              ),
+            return const ErrorState(
+              message: 'Couldn\'t load this post. Check your connection.',
             );
           }
 
@@ -112,13 +106,13 @@ class PostDetailScreen extends StatelessWidget {
                           vertical: 6,
                         ),
                         decoration: BoxDecoration(
-                          color: Colors.blue.shade50,
+                          color: Theme.of(context).colorScheme.primaryContainer,
                           borderRadius: BorderRadius.circular(20),
                         ),
                         child: Text(
                           category.toUpperCase(),
-                          style: const TextStyle(
-                            color: Colors.blueAccent,
+                          style: TextStyle(
+                            color: Theme.of(context).colorScheme.onPrimaryContainer,
                             fontWeight: FontWeight.bold,
                             fontSize: 12,
                           ),
@@ -135,8 +129,8 @@ class PostDetailScreen extends StatelessWidget {
                     const SizedBox(height: 8),
                     Text(
                       'By $initialAuthorName',
-                      style: const TextStyle(
-                        color: Colors.grey,
+                      style: TextStyle(
+                        color: Theme.of(context).colorScheme.onSurfaceVariant,
                         fontWeight: FontWeight.w600,
                       ),
                     ),
@@ -144,16 +138,16 @@ class PostDetailScreen extends StatelessWidget {
                       const SizedBox(height: 4),
                       Text(
                         _formatDate(updateDate),
-                        style: const TextStyle(color: Colors.grey),
+                        style: TextStyle(color: Theme.of(context).colorScheme.onSurfaceVariant),
                       ),
                     ],
                     if (intro.isNotEmpty) ...[
                       const SizedBox(height: 20),
                       Text(
                         intro,
-                        style: const TextStyle(
+                        style: TextStyle(
                           fontSize: 17,
-                          color: Colors.black87,
+                          color: Theme.of(context).colorScheme.onSurface,
                           height: 1.5,
                         ),
                       ),
@@ -175,11 +169,11 @@ class PostDetailScreen extends StatelessWidget {
                                 fit: BoxFit.cover,
                                 errorBuilder: (_, __, ___) => Container(
                                   width: 300,
-                                  color: Colors.grey.shade200,
+                                  color: Theme.of(context).colorScheme.surfaceContainerHighest,
                                   alignment: Alignment.center,
-                                  child: const Icon(
+                                  child: Icon(
                                     Icons.image_not_supported,
-                                    color: Colors.grey,
+                                    color: Theme.of(context).colorScheme.onSurfaceVariant,
                                   ),
                                 ),
                               ),
@@ -200,10 +194,10 @@ class PostDetailScreen extends StatelessWidget {
                       const SizedBox(height: 12),
                       Text(
                         body,
-                        style: const TextStyle(
+                        style: TextStyle(
                           fontSize: 16,
                           height: 1.65,
-                          color: Colors.black87,
+                          color: Theme.of(context).colorScheme.onSurface,
                         ),
                       ),
                     ],

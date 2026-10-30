@@ -1,5 +1,6 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
+import 'theme.dart';
 import 'package:provider/provider.dart';
 
 import 'collections.dart';
@@ -77,18 +78,18 @@ class _ContactScreenState extends State<ContactScreen> {
   }
 
   Widget _buildSignedOut() {
-    return const Center(
+    return Center(
       child: Padding(
-        padding: EdgeInsets.all(32),
+        padding: const EdgeInsets.all(32),
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            Icon(Icons.lock_outline, size: 56, color: Colors.grey),
-            SizedBox(height: 16),
+            Icon(Icons.lock_outline, size: 56, color: Theme.of(context).colorScheme.onSurfaceVariant),
+            const SizedBox(height: 16),
             Text(
-              'Please sign in to send a message.',
+              'Sign in to send us a message.',
               textAlign: TextAlign.center,
-              style: TextStyle(fontSize: 16, color: Colors.grey),
+              style: TextStyle(fontSize: 16, color: Theme.of(context).colorScheme.onSurfaceVariant),
             ),
           ],
         ),
@@ -101,18 +102,18 @@ class _ContactScreenState extends State<ContactScreen> {
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
-          const Icon(Icons.check_circle_outline,
-              size: 72, color: Colors.green),
+          Icon(Icons.check_circle_outline,
+              size: 72, color: Theme.of(context).colorScheme.success),
           const SizedBox(height: 16),
           const Text(
             'Message sent!',
             style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
           ),
           const SizedBox(height: 8),
-          const Text(
-            'Thank you for reaching out. We will get back to you soon.',
+          Text(
+            'Thanks for writing in. We\'ll reply to your email soon.',
             textAlign: TextAlign.center,
-            style: TextStyle(color: Colors.grey),
+            style: TextStyle(color: Theme.of(context).colorScheme.onSurfaceVariant),
           ),
           const SizedBox(height: 24),
           ElevatedButton(
@@ -163,7 +164,7 @@ class _ContactScreenState extends State<ContactScreen> {
                     height: 20,
                     width: 20,
                     child: CircularProgressIndicator(
-                        strokeWidth: 2, color: Colors.white),
+                        strokeWidth: 2),
                   )
                 : const Text('Send Message'),
           ),

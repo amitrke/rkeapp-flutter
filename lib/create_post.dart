@@ -240,8 +240,7 @@ class _CreatePostScreenState extends State<CreatePostScreen> {
               width: 20,
               height: 20,
               child: CircularProgressIndicator(
-                strokeWidth: 2,
-                color: Colors.white,
+                strokeWidth: 2
               ),
             ),
           ),
@@ -412,7 +411,7 @@ class _ImageThumb extends StatelessWidget {
             errorBuilder: (_, __, ___) => Container(
               width: 80,
               height: 80,
-              color: Colors.grey.shade300,
+              color: Theme.of(context).colorScheme.surfaceContainerHighest,
               child: const Icon(Icons.broken_image_outlined),
             ),
           ),

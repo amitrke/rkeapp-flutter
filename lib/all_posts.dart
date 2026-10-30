@@ -1,5 +1,6 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
+import 'theme.dart';
 
 import 'collections.dart';
 import 'post_detail.dart';
@@ -131,10 +132,10 @@ class _AllPostsScreenState extends State<AllPostsScreen> {
           // Posts list
           Expanded(
             child: _docs.isEmpty && !_loading
-                ? const Center(
+                ? Center(
                     child: Text(
                       'No posts found.',
-                      style: TextStyle(color: Colors.grey),
+                      style: TextStyle(color: Theme.of(context).colorScheme.onSurfaceVariant),
                     ),
                   )
                 : ListView.builder(
@@ -224,11 +225,11 @@ class _PostCard extends StatelessWidget {
                     width: 72,
                     height: 72,
                     fit: BoxFit.cover,
-                    errorBuilder: (_, __, ___) => _placeholder(),
+                    errorBuilder: (_, __, ___) => _placeholder(context),
                   ),
                 )
               else
-                _placeholder(),
+                _placeholder(context),
               const SizedBox(width: 12),
               Expanded(
                 child: Column(
@@ -240,13 +241,13 @@ class _PostCard extends StatelessWidget {
                         padding: const EdgeInsets.symmetric(
                             horizontal: 8, vertical: 2),
                         decoration: BoxDecoration(
-                          color: Colors.blue.shade50,
+                          color: Theme.of(context).colorScheme.primaryContainer,
                           borderRadius: BorderRadius.circular(12),
                         ),
                         child: Text(
                           category,
                           style: TextStyle(
-                              fontSize: 11, color: Colors.blue.shade700),
+                              fontSize: 12, color: Theme.of(context).colorScheme.onPrimaryContainer),
                         ),
                       ),
                     Text(
@@ -260,8 +261,8 @@ class _PostCard extends StatelessWidget {
                       const SizedBox(height: 4),
                       Text(
                         intro,
-                        style: const TextStyle(
-                            fontSize: 13, color: Colors.black54),
+                        style: TextStyle(
+                            fontSize: 14, color: Theme.of(context).colorScheme.onSurfaceVariant),
                         maxLines: 2,
                         overflow: TextOverflow.ellipsis,
                       ),
@@ -286,7 +287,7 @@ class _PostCard extends StatelessWidget {
                             name.isNotEmpty ? 'by $name' : '',
                             style: TextStyle(
                               fontSize: 12,
-                              color: Colors.blue.shade600,
+                              color: Theme.of(context).colorScheme.primary,
                               decoration: TextDecoration.underline,
                             ),
                           ),
@@ -303,15 +304,15 @@ class _PostCard extends StatelessWidget {
     );
   }
 
-  Widget _placeholder() {
+  Widget _placeholder(BuildContext context) {
     return Container(
       width: 72,
       height: 72,
       decoration: BoxDecoration(
-        color: Colors.grey.shade200,
-        borderRadius: BorderRadius.circular(6),
+        color: Theme.of(context).colorScheme.surfaceContainerHighest,
+        borderRadius: BorderRadius.circular(Radii.s),
       ),
-      child: const Icon(Icons.article_outlined, color: Colors.grey, size: 32),
+      child: Icon(Icons.article_outlined, color: Theme.of(context).colorScheme.onSurfaceVariant, size: 32),
     );
   }
 }

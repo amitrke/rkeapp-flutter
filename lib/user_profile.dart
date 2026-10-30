@@ -112,7 +112,7 @@ class _ProfileBody extends StatelessWidget {
         children: [
           // Header
           Container(
-            color: Colors.blueAccent,
+            color: Theme.of(context).colorScheme.surfaceContainerLow,
             width: double.infinity,
             padding: const EdgeInsets.symmetric(vertical: 24, horizontal: 16),
             child: Column(
@@ -122,17 +122,17 @@ class _ProfileBody extends StatelessWidget {
                   backgroundImage: data.profilePic.isNotEmpty
                       ? NetworkImage(data.profilePic)
                       : null,
-                  backgroundColor: Colors.white,
+                  backgroundColor: Theme.of(context).colorScheme.primaryContainer,
                   child: data.profilePic.isEmpty
-                      ? const Icon(Icons.person,
-                          size: 40, color: Colors.blueAccent)
+                      ? Icon(Icons.person,
+                          size: 40, color: Theme.of(context).colorScheme.onPrimaryContainer)
                       : null,
                 ),
                 const SizedBox(height: 8),
                 Text(
                   data.name.isNotEmpty ? data.name : 'User',
-                  style: const TextStyle(
-                    color: Colors.white,
+                  style: TextStyle(
+                    color: Theme.of(context).colorScheme.onSurface,
                     fontSize: 20,
                     fontWeight: FontWeight.bold,
                   ),
@@ -164,12 +164,12 @@ class _ProfileBody extends StatelessWidget {
             ...data.albums.map((album) => _AlbumRow(album: album)),
           ],
           if (data.posts.isEmpty && data.albums.isEmpty)
-            const Padding(
-              padding: EdgeInsets.all(32),
+            Padding(
+              padding: const EdgeInsets.all(32),
               child: Center(
                 child: Text(
                   'No public posts or albums yet.',
-                  style: TextStyle(color: Colors.grey),
+                  style: TextStyle(color: Theme.of(context).colorScheme.onSurfaceVariant),
                 ),
               ),
             ),
@@ -191,7 +191,7 @@ class _PostRow extends StatelessWidget {
     final intro = data['intro'] as String? ?? '';
     final authorName = data['authorName'] as String? ?? '';
     return ListTile(
-      leading: const Icon(Icons.article_outlined, color: Colors.blueGrey),
+      leading: Icon(Icons.article_outlined, color: Theme.of(context).colorScheme.onSurfaceVariant),
       title: Text(title, maxLines: 1, overflow: TextOverflow.ellipsis),
       subtitle: intro.isNotEmpty
           ? Text(intro, maxLines: 1, overflow: TextOverflow.ellipsis)

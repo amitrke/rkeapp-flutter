@@ -188,7 +188,7 @@ class _CreateAlbumScreenState extends State<CreateAlbumScreen> {
                 width: 20,
                 height: 20,
                 child: CircularProgressIndicator(
-                    strokeWidth: 2, color: Colors.white),
+                    strokeWidth: 2),
               ),
             ),
         ],
@@ -251,13 +251,13 @@ class _CreateAlbumScreenState extends State<CreateAlbumScreen> {
                       Container(
                         height: 100,
                         decoration: BoxDecoration(
-                          border: Border.all(color: Colors.grey.shade300),
+                          border: Border.all(color: Theme.of(context).colorScheme.outlineVariant),
                           borderRadius: BorderRadius.circular(8),
                         ),
-                        child: const Center(
+                        child: Center(
                           child: Text(
                             'No photos yet',
-                            style: TextStyle(color: Colors.grey),
+                            style: TextStyle(color: Theme.of(context).colorScheme.onSurfaceVariant),
                           ),
                         ),
                       )
@@ -339,7 +339,7 @@ class _AlbumImageThumb extends StatelessWidget {
             _url,
             fit: BoxFit.cover,
             errorBuilder: (_, __, ___) => Container(
-              color: Colors.grey.shade300,
+              color: Theme.of(context).colorScheme.surfaceContainerHighest,
               child: const Icon(Icons.broken_image_outlined),
             ),
           ),
