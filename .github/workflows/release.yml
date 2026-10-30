@@ -209,6 +209,12 @@ jobs:
           flutter-version: ${{ env.FLUTTER_VERSION }}
           channel: stable
           cache: true
+
+      # The iOS project builds its plugins with CocoaPods, pinned by
+      # ios/Podfile.lock (as the Xcode Cloud script does). With Swift Package
+      # Manager on, Flutter resolves a different Firebase SDK and cloud_firestore
+      # fails to compile against it.
+      - run: flutter config --no-enable-swift-package-manager
       - run: flutter pub get
 
       # The secret holds the .p8 file base64-encoded, the same form the
