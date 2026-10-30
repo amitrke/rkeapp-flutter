@@ -1,200 +1,193 @@
 import 'package:rkeapp/models.dart';
+import 'package:rkeapp/posts.dart';
+import 'package:rkeapp/theme.dart';
+import 'package:rkeapp/widgets.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
 class WeatherDetailsWidget extends StatelessWidget {
   const WeatherDetailsWidget({super.key});
 
-  DateTime _withOffset(int unixSeconds, int offsetSeconds) {
+  // OpenWeatherMap times are UTC seconds; shift by the city's offset.
+  DateTime _local(int unixSeconds, int offsetSeconds) {
     return DateTime.fromMillisecondsSinceEpoch(
       (unixSeconds + offsetSeconds) * 1000,
       isUtc: true,
     );
   }
 
-  String _hourLabel(int unixSeconds, int offsetSeconds) {
-    final dt = _withOffset(unixSeconds, offsetSeconds);
-    final h = dt.hour.toString().padLeft(2, '0');
-    final m = dt.minute.toString().padLeft(2, '0');
-    return '$h:$m';
-  }
-
-  String _dayLabel(int unixSeconds, int offsetSeconds) {
+  String _dayLabel(int index, int unixSeconds, int offsetSeconds) {
+    if (index == 0) return 'Today';
     const names = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
-    final dt = _withOffset(unixSeconds, offsetSeconds);
-    return names[dt.weekday - 1];
+    return names[_local(unixSeconds, offsetSeconds).weekday - 1];
   }
 
-  Widget _icon(String icon, {double size = 56}) {
-    if (icon.isEmpty) {
-      return Icon(Icons.wb_sunny, size: size, color: Colors.orange);
-    }
-    return Image.network(
-      'https://openweathermap.org/img/wn/$icon@2x.png',
-      width: size,
-      height: size,
-      errorBuilder: (_, __, ___) =>
-          Icon(Icons.wb_sunny, size: size, color: Colors.orange),
-    );
+  static String _compass(int deg) {
+    const points = ['N', 'NE', 'E', 'SE', 'S', 'SW', 'W', 'NW'];
+    return points[((deg % 360) / 45).round() % 8];
+  }
+
+  static String _uvLabel(double uvi) {
+    if (uvi < 3) return 'Low';
+    if (uvi < 6) return 'Moderate';
+    if (uvi < 8) return 'High';
+    if (uvi < 11) return 'Very high';
+    return 'Extreme';
   }
 
   @override
   Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
+    final text = Theme.of(context).textTheme;
+
     return Consumer<AppData>(
       builder: (context, appData, _) {
         if (appData.loading) {
           return const Center(child: CircularProgressIndicator());
         }
         if (appData.error) {
-          return const Center(
-            child: Padding(
-              padding: EdgeInsets.all(24),
-              child: Text(
-                'Could not load weather data. Please check your connection and restart the app.',
-                textAlign: TextAlign.center,
-                style: TextStyle(color: Colors.grey),
-              ),
-            ),
+          return ErrorState(
+            message: 'Couldn\'t load the weather. Check your connection.',
+            onRetry: appDataService.reload,
           );
         }
-
         final details = appData.weatherDetails;
         if (details == null) {
-          return const Center(
-            child: Padding(
-              padding: EdgeInsets.all(24),
-              child: Text(
-                'Weather details are not available right now.',
-                style: TextStyle(color: Colors.grey),
-              ),
-            ),
+          return ErrorState(
+            message: 'Weather for Roorkee isn\'t available right now.',
+            onRetry: appDataService.reload,
           );
         }
 
         final current = details.current;
+        final offset = details.timezoneOffset;
+        final today = details.daily.isNotEmpty ? details.daily.first : null;
 
-        return SingleChildScrollView(
-          padding: const EdgeInsets.all(16),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
+        return RefreshIndicator(
+          onRefresh: appDataService.reload,
+          child: ListView(
+            padding: const EdgeInsets.fromLTRB(Space.l, Space.xs, Space.l, Space.xl),
             children: [
+              // Hero
               Container(
-                width: double.infinity,
-                padding: const EdgeInsets.all(20),
+                padding: const EdgeInsets.all(Space.l),
                 decoration: BoxDecoration(
-                  gradient: const LinearGradient(
-                    colors: [Color(0xFF2193B0), Color(0xFF6DD5ED)],
-                    begin: Alignment.topLeft,
-                    end: Alignment.bottomRight,
-                  ),
-                  borderRadius: BorderRadius.circular(16),
+                  color: scheme.primaryContainer,
+                  borderRadius: BorderRadius.circular(Radii.l),
                 ),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    const Text(
-                      'Roorkee Weather',
-                      style: TextStyle(
-                        color: Colors.white,
-                        fontSize: 20,
-                        fontWeight: FontWeight.bold,
-                      ),
-                    ),
-                    const SizedBox(height: 8),
-                    Text(
-                      details.timezone,
-                      style: const TextStyle(color: Colors.white70),
-                    ),
-                    const SizedBox(height: 12),
                     Row(
+                      crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Expanded(
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Text(
-                                '${current.temp.toStringAsFixed(1)}°C',
-                                style: const TextStyle(
-                                  color: Colors.white,
-                                  fontSize: 44,
-                                  fontWeight: FontWeight.w700,
-                                ),
-                              ),
-                              Text(
-                                current.summary.description,
-                                style: const TextStyle(
-                                  color: Colors.white,
-                                  fontSize: 16,
-                                ),
-                              ),
-                            ],
+                          child: Text(
+                            '${current.temp.round()}°',
+                            style: text.displayLarge?.copyWith(
+                              color: scheme.onPrimaryContainer,
+                              fontWeight: FontWeight.w700,
+                              height: 1,
+                              letterSpacing: -2,
+                            ),
                           ),
                         ),
-                        _icon(current.summary.icon, size: 72),
+                        Icon(
+                          weatherIcon(current.summary.icon),
+                          size: 56,
+                          color: scheme.onPrimaryContainer,
+                        ),
                       ],
                     ),
-                    const SizedBox(height: 14),
-                    Wrap(
-                      spacing: 16,
-                      runSpacing: 8,
-                      children: [
-                        Text('Humidity ${current.humidity}% ',
-                            style: const TextStyle(color: Colors.white70)),
-                        Text('Wind ${current.windSpeed.toStringAsFixed(1)} m/s',
-                            style: const TextStyle(color: Colors.white70)),
-                        Text('Pressure ${current.pressure} hPa',
-                            style: const TextStyle(color: Colors.white70)),
-                        Text('UV ${current.uvi.toStringAsFixed(1)}',
-                            style: const TextStyle(color: Colors.white70)),
-                      ],
+                    const SizedBox(height: Space.xs),
+                    Text(
+                      capitalize(current.summary.description),
+                      style: text.titleMedium?.copyWith(
+                        color: scheme.onPrimaryContainer,
+                        fontWeight: FontWeight.w700,
+                      ),
+                    ),
+                    Text(
+                      [
+                        'Feels like ${current.feelsLike.round()}°',
+                        if (today != null) 'High ${today.maxTemp.round()}°',
+                        if (today != null) 'Low ${today.minTemp.round()}°',
+                      ].join(' · '),
+                      style: text.bodyMedium?.copyWith(color: scheme.onPrimaryContainer),
                     ),
                   ],
                 ),
               ),
-              const SizedBox(height: 20),
-              const Text(
-                'Hourly Forecast',
-                style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+              const SizedBox(height: Space.m),
+
+              // Metrics grid
+              GridView.count(
+                crossAxisCount: 2,
+                shrinkWrap: true,
+                physics: const NeverScrollableScrollPhysics(),
+                mainAxisSpacing: Space.s,
+                crossAxisSpacing: Space.s,
+                childAspectRatio: 2.4,
+                children: [
+                  _Metric(
+                    icon: Icons.water_drop_outlined,
+                    label: 'Humidity',
+                    value: '${current.humidity}%',
+                  ),
+                  _Metric(
+                    icon: Icons.air,
+                    label: 'Wind',
+                    value: '${(current.windSpeed * 3.6).round()} km/h ${_compass(current.windDeg)}',
+                  ),
+                  _Metric(
+                    icon: Icons.light_mode_outlined,
+                    label: 'UV index',
+                    value: '${current.uvi.round()} ${_uvLabel(current.uvi)}',
+                  ),
+                  _Metric(
+                    icon: Icons.wb_twilight,
+                    label: 'Sunset',
+                    value: current.sunset > 0
+                        ? clockLabel(_local(current.sunset, offset), minutes: true)
+                        : '—',
+                  ),
+                ],
               ),
-              const SizedBox(height: 10),
+              const SizedBox(height: Space.xl),
+
+              // Hourly
+              const SectionHeader('Next 12 hours'),
+              const SizedBox(height: Space.s),
               SizedBox(
-                height: 142,
+                height: 96,
                 child: ListView.separated(
                   scrollDirection: Axis.horizontal,
                   itemCount: details.hourly.length,
-                  separatorBuilder: (_, __) => const SizedBox(width: 10),
+                  separatorBuilder: (_, __) => const SizedBox(width: Space.xs),
                   itemBuilder: (_, i) {
                     final h = details.hourly[i];
+                    final isNow = i == 0;
                     return Container(
-                      width: 94,
-                      padding: const EdgeInsets.symmetric(
-                        vertical: 10,
-                        horizontal: 8,
-                      ),
+                      width: 64,
+                      padding: const EdgeInsets.symmetric(vertical: Space.s),
                       decoration: BoxDecoration(
-                        color: Colors.white,
-                        borderRadius: BorderRadius.circular(12),
-                        border: Border.all(color: Colors.blueGrey.shade100),
+                        color: isNow ? scheme.surfaceContainerHigh : null,
+                        borderRadius: BorderRadius.circular(Radii.m),
                       ),
                       child: Column(
-                        mainAxisAlignment: MainAxisAlignment.center,
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
                         children: [
                           Text(
-                            _hourLabel(h.dt, details.timezoneOffset),
-                            style: const TextStyle(
-                              fontSize: 12,
-                              color: Colors.grey,
+                            isNow ? 'Now' : clockLabel(_local(h.dt, offset)),
+                            style: text.bodySmall?.copyWith(
+                              color: isNow ? scheme.onSurface : scheme.onSurfaceVariant,
+                              fontWeight: isNow ? FontWeight.w700 : null,
                             ),
                           ),
-                          const SizedBox(height: 6),
-                          _icon(h.summary.icon, size: 40),
-                          const SizedBox(height: 4),
+                          Icon(weatherIcon(h.summary.icon), size: 22),
                           Text(
-                            '${h.temp.toStringAsFixed(0)}°',
-                            style: const TextStyle(
-                              fontSize: 18,
-                              fontWeight: FontWeight.bold,
-                            ),
+                            '${h.temp.round()}°',
+                            style: text.titleSmall?.copyWith(fontWeight: FontWeight.w700),
                           ),
                         ],
                       ),
@@ -202,58 +195,98 @@ class WeatherDetailsWidget extends StatelessWidget {
                   },
                 ),
               ),
-              const SizedBox(height: 20),
-              const Text(
-                '7-Day Forecast',
-                style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
-              ),
-              const SizedBox(height: 10),
-              ...details.daily.map((d) {
-                return Card(
-                  margin: const EdgeInsets.only(bottom: 10),
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(10),
+              const SizedBox(height: Space.xl),
+
+              // Daily
+              const SectionHeader('7-day forecast'),
+              const SizedBox(height: Space.xs),
+              for (var i = 0; i < details.daily.length; i++)
+                Container(
+                  padding: const EdgeInsets.symmetric(vertical: Space.m),
+                  decoration: BoxDecoration(
+                    border: i == 0
+                        ? null
+                        : Border(top: BorderSide(color: scheme.outlineVariant)),
                   ),
-                  child: Padding(
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 12,
-                      vertical: 10,
-                    ),
-                    child: Row(
-                      children: [
-                        SizedBox(
-                          width: 48,
-                          child: Text(
-                            _dayLabel(d.dt, details.timezoneOffset),
-                            style: const TextStyle(
-                              fontSize: 14,
-                              fontWeight: FontWeight.w600,
-                            ),
-                          ),
+                  child: Row(
+                    children: [
+                      SizedBox(
+                        width: 56,
+                        child: Text(
+                          _dayLabel(i, details.daily[i].dt, offset),
+                          style: text.titleSmall?.copyWith(fontWeight: FontWeight.w600),
                         ),
-                        _icon(d.summary.icon, size: 38),
-                        const SizedBox(width: 10),
-                        Expanded(
-                          child: Text(
-                            d.summary.main,
-                            style: const TextStyle(color: Colors.black87),
-                          ),
+                      ),
+                      Icon(weatherIcon(details.daily[i].summary.icon), size: 22),
+                      const SizedBox(width: Space.m),
+                      Expanded(
+                        child: Text(
+                          details.daily[i].summary.main,
+                          style: text.bodyMedium?.copyWith(color: scheme.onSurfaceVariant),
                         ),
-                        Text(
-                          '${d.minTemp.toStringAsFixed(0)}° / ${d.maxTemp.toStringAsFixed(0)}°',
-                          style: const TextStyle(
-                            fontWeight: FontWeight.w600,
-                          ),
+                      ),
+                      Text(
+                        '${details.daily[i].maxTemp.round()}°',
+                        style: text.titleSmall?.copyWith(fontWeight: FontWeight.w700),
+                      ),
+                      SizedBox(
+                        width: 40,
+                        child: Text(
+                          '${details.daily[i].minTemp.round()}°',
+                          textAlign: TextAlign.right,
+                          style: text.titleSmall?.copyWith(color: scheme.onSurfaceVariant),
                         ),
-                      ],
-                    ),
+                      ),
+                    ],
                   ),
-                );
-              }),
+                ),
             ],
           ),
         );
       },
+    );
+  }
+}
+
+class _Metric extends StatelessWidget {
+  final IconData icon;
+  final String label;
+  final String value;
+  const _Metric({required this.icon, required this.label, required this.value});
+
+  @override
+  Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
+    final text = Theme.of(context).textTheme;
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: Space.m, vertical: Space.s),
+      decoration: BoxDecoration(
+        color: scheme.surfaceContainerLow,
+        borderRadius: BorderRadius.circular(Radii.m),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          Row(
+            children: [
+              Icon(icon, size: 16, color: scheme.onSurfaceVariant),
+              const SizedBox(width: Space.xs),
+              Text(label, style: text.bodySmall?.copyWith(color: scheme.onSurfaceVariant)),
+            ],
+          ),
+          const SizedBox(height: 2),
+          Text(
+            value,
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            style: text.titleMedium?.copyWith(
+              fontWeight: FontWeight.w700,
+              fontFeatures: const [FontFeature.tabularFigures()],
+            ),
+          ),
+        ],
+      ),
     );
   }
 }

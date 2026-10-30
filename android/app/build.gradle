@@ -58,9 +58,12 @@ android {
 
     buildTypes {
         release {
-            if (keystorePropertiesFile.exists()) {
-                signingConfig signingConfigs.release
-            }
+            // Without key.properties (local builds, build.yml in CI) fall back
+            // to the debug key so the APK can still be sideloaded. release.yml
+            // refuses to upload a debug-signed bundle.
+            signingConfig keystorePropertiesFile.exists()
+                    ? signingConfigs.release
+                    : signingConfigs.debug
         }
     }
 

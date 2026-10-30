@@ -11,7 +11,7 @@ usage() {
 Usage:
   ./scripts/run-fastlane-ios.sh metadata
   ./scripts/run-fastlane-ios.sh screenshots
-  ./scripts/run-fastlane-ios.sh submit
+  ./scripts/run-fastlane-ios.sh submit <build_number>
 
 What it does:
   - Loads variables from .env.fastlane (if present)
@@ -74,13 +74,14 @@ ensure_bundle() {
 
 run_lane() {
   local lane="$1"
+  shift
 
   require_env APP_STORE_CONNECT_KEY_ID
   require_env APP_STORE_CONNECT_ISSUER_ID
   require_env APP_STORE_CONNECT_API_KEY
 
   ensure_bundle
-  bundle exec fastlane ios "$lane"
+  bundle exec fastlane ios "$lane" "$@"
 }
 
 action="${1:-}"
@@ -95,8 +96,12 @@ case "$action" in
     run_lane "upload_screenshots"
     ;;
   submit)
+    if [[ $# -lt 2 ]]; then
+      usage
+      exit 1
+    fi
     load_env_file "$ENV_FILE"
-    run_lane "submit_for_review"
+    run_lane "promote" "build:$2"
     ;;
   -h|--help|help|"")
     usage

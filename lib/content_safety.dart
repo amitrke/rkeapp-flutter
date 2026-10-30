@@ -195,7 +195,7 @@ class ContentActionsMenu extends StatelessWidget {
           ),
           TextButton(
             onPressed: () => Navigator.of(ctx).pop(true),
-            child: const Text('Block', style: TextStyle(color: Colors.red)),
+            child: Text('Block', style: TextStyle(color: Theme.of(ctx).colorScheme.error)),
           ),
         ],
       ),
@@ -318,7 +318,7 @@ class _ReportDialogState extends State<_ReportDialog> {
                 ),
               ),
               if (_error != null)
-                Text(_error!, style: const TextStyle(color: Colors.red)),
+                Text(_error!, style: TextStyle(color: Theme.of(context).colorScheme.error)),
             ],
           ),
         ),

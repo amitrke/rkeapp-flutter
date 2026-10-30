@@ -2,6 +2,8 @@ import 'package:rkeapp/collections.dart';
 import 'package:rkeapp/content_safety.dart';
 import 'package:rkeapp/image_utils.dart';
 import 'package:rkeapp/models.dart';
+import 'package:rkeapp/theme.dart';
+import 'package:rkeapp/widgets.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
@@ -42,6 +44,8 @@ class PhotoGalleryScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
+    final text = Theme.of(context).textTheme;
     return FutureBuilder<List<AppAlbum>>(
       future: fetchAlbums(),
       builder: (context, snapshot) {
@@ -50,14 +54,8 @@ class PhotoGalleryScreen extends StatelessWidget {
         }
 
         if (snapshot.hasError) {
-          return const Center(
-            child: Padding(
-              padding: EdgeInsets.all(24),
-              child: Text(
-                'Unable to load photo albums right now.',
-                style: TextStyle(color: Colors.grey),
-              ),
-            ),
+          return const ErrorState(
+            message: 'Couldn\'t load photo albums. Check your connection.',
           );
         }
 
@@ -66,14 +64,9 @@ class PhotoGalleryScreen extends StatelessWidget {
             .where((album) => !blocks.isBlocked(album.userId))
             .toList();
         if (albums.isEmpty) {
-          return const Center(
-            child: Padding(
-              padding: EdgeInsets.all(24),
-              child: Text(
-                'No albums available yet.',
-                style: TextStyle(color: Colors.grey),
-              ),
-            ),
+          return const EmptyState(
+            icon: Icons.photo_library_outlined,
+            message: 'No albums yet.',
           );
         }
 
@@ -86,122 +79,53 @@ class PhotoGalleryScreen extends StatelessWidget {
                     ? 3
                     : 2;
 
-            return SingleChildScrollView(
-              padding: const EdgeInsets.all(16),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  const Text(
-                    'Photo Gallery',
-                    style: TextStyle(
-                      fontSize: 24,
-                      fontWeight: FontWeight.bold,
-                    ),
-                  ),
-                  const SizedBox(height: 6),
-                  Text(
-                    '${albums.length} ${albums.length == 1 ? 'album' : 'albums'} available',
-                    style: const TextStyle(color: Colors.grey),
-                  ),
-                  const SizedBox(height: 16),
-                  GridView.builder(
-                    shrinkWrap: true,
-                    physics: const NeverScrollableScrollPhysics(),
-                    gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
-                      crossAxisCount: crossAxisCount,
-                      crossAxisSpacing: 12,
-                      mainAxisSpacing: 12,
-                      childAspectRatio: 0.78,
-                    ),
-                    itemCount: albums.length,
-                    itemBuilder: (context, index) {
-                      final album = albums[index];
-                      return InkWell(
-                        borderRadius: BorderRadius.circular(14),
-                        onTap: () {
-                          Navigator.of(context).push(
-                            MaterialPageRoute(
-                              builder: (_) => AlbumDetailScreen(album: album),
-                            ),
-                          );
-                        },
-                        child: Card(
-                          elevation: 2,
-                          clipBehavior: Clip.antiAlias,
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(14),
-                          ),
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Expanded(
-                                child: album.coverUrl.isNotEmpty
-                                    ? Image.network(
-                                        album.coverUrl,
-                                        width: double.infinity,
-                                        fit: BoxFit.cover,
-                                        errorBuilder: (_, __, ___) => Container(
-                                          color: Colors.grey.shade200,
-                                          alignment: Alignment.center,
-                                          child: const Icon(
-                                            Icons.photo_library_outlined,
-                                            color: Colors.grey,
-                                            size: 42,
-                                          ),
-                                        ),
-                                      )
-                                    : Container(
-                                        color: Colors.grey.shade200,
-                                        alignment: Alignment.center,
-                                        child: const Icon(
-                                          Icons.photo_library_outlined,
-                                          color: Colors.grey,
-                                          size: 42,
-                                        ),
-                                      ),
-                              ),
-                              Padding(
-                                padding: const EdgeInsets.all(10),
-                                child: Column(
-                                  crossAxisAlignment: CrossAxisAlignment.start,
-                                  children: [
-                                    Text(
-                                      album.name,
-                                      maxLines: 2,
-                                      overflow: TextOverflow.ellipsis,
-                                      style: const TextStyle(
-                                        fontWeight: FontWeight.bold,
-                                        fontSize: 14,
-                                      ),
-                                    ),
-                                    const SizedBox(height: 4),
-                                    Text(
-                                      '${album.images.length} ${album.images.length == 1 ? 'photo' : 'photos'}',
-                                      style: const TextStyle(
-                                        color: Colors.grey,
-                                        fontSize: 12,
-                                      ),
-                                    ),
-                                    if (album.description.isNotEmpty) ...[
-                                      const SizedBox(height: 6),
-                                      Text(
-                                        album.description,
-                                        maxLines: 2,
-                                        overflow: TextOverflow.ellipsis,
-                                        style: const TextStyle(fontSize: 12),
-                                      ),
-                                    ],
-                                  ],
-                                ),
-                              ),
-                            ],
-                          ),
-                        ),
-                      );
-                    },
-                  ),
-                ],
+            return GridView.builder(
+              padding: const EdgeInsets.fromLTRB(Space.l, Space.xs, Space.l, Space.xl),
+              gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+                crossAxisCount: crossAxisCount,
+                crossAxisSpacing: Space.m,
+                mainAxisSpacing: Space.l,
+                childAspectRatio: 0.8,
               ),
+              itemCount: albums.length,
+              itemBuilder: (context, index) {
+                final album = albums[index];
+                final count = album.images.length;
+                return InkWell(
+                  borderRadius: BorderRadius.circular(Radii.m),
+                  onTap: () {
+                    Navigator.of(context).push(
+                      MaterialPageRoute(
+                        builder: (_) => AlbumDetailScreen(album: album),
+                      ),
+                    );
+                  },
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Expanded(
+                        child: NetworkThumb(
+                          album.coverUrl,
+                          width: double.infinity,
+                          radius: Radii.m,
+                          placeholderIcon: Icons.photo_library_outlined,
+                        ),
+                      ),
+                      const SizedBox(height: Space.s),
+                      Text(
+                        album.name,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: text.titleSmall?.copyWith(fontWeight: FontWeight.w700),
+                      ),
+                      Text(
+                        '$count ${count == 1 ? 'photo' : 'photos'}',
+                        style: text.bodySmall?.copyWith(color: scheme.onSurfaceVariant),
+                      ),
+                    ],
+                  ),
+                );
+              },
             );
           },
         );
@@ -262,10 +186,11 @@ class AlbumDetailScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
+    final text = Theme.of(context).textTheme;
     return Scaffold(
       appBar: AppBar(
         title: Text(album.name),
-        backgroundColor: Colors.blueAccent,
         actions: [
           ContentActionsMenu(
             itemId: album.id,
@@ -285,14 +210,9 @@ class AlbumDetailScreen extends StatelessWidget {
 
           final images = snapshot.data ?? const <String>[];
           if (images.isEmpty) {
-            return const Center(
-              child: Padding(
-                padding: EdgeInsets.all(24),
-                child: Text(
-                  'This album has no photos to display.',
-                  style: TextStyle(color: Colors.grey),
-                ),
-              ),
+            return const EmptyState(
+              icon: Icons.photo_outlined,
+              message: 'This album has no photos yet.',
             );
           }
 
@@ -301,40 +221,29 @@ class AlbumDetailScreen extends StatelessWidget {
             builder: (context, largeSnapshot) {
               final largeImages = largeSnapshot.data ?? images;
               return SingleChildScrollView(
-                padding: const EdgeInsets.all(16),
+                padding: const EdgeInsets.fromLTRB(Space.l, Space.xs, Space.l, Space.xl),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text(
-                      album.name,
-                      style: const TextStyle(
-                        fontSize: 24,
-                        fontWeight: FontWeight.bold,
-                      ),
-                    ),
                     if (album.description.isNotEmpty) ...[
-                      const SizedBox(height: 8),
                       Text(
                         album.description,
-                        style: const TextStyle(
-                          color: Colors.black87,
-                          height: 1.5,
-                        ),
+                        style: text.bodyLarge?.copyWith(height: 1.5),
                       ),
+                      const SizedBox(height: Space.s),
                     ],
-                    const SizedBox(height: 8),
                     Text(
-                      '${album.images.length} ${album.images.length == 1 ? 'photo' : 'photos'}',
-                      style: const TextStyle(color: Colors.grey),
+                      '${album.images.length} ${album.images.length == 1 ? 'photo' : 'photos'} · tap a photo to view full screen',
+                      style: text.bodySmall?.copyWith(color: scheme.onSurfaceVariant),
                     ),
-                    const SizedBox(height: 16),
+                    const SizedBox(height: Space.l),
                     GridView.builder(
                       shrinkWrap: true,
                       physics: const NeverScrollableScrollPhysics(),
                       gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
                         crossAxisCount: 2,
-                        crossAxisSpacing: 12,
-                        mainAxisSpacing: 12,
+                        crossAxisSpacing: Space.s,
+                        mainAxisSpacing: Space.s,
                         childAspectRatio: 1,
                       ),
                       itemCount: images.length,
@@ -344,22 +253,12 @@ class AlbumDetailScreen extends StatelessWidget {
                             ? largeImages[index]
                             : previewUrl;
                         return InkWell(
-                          borderRadius: BorderRadius.circular(14),
+                          borderRadius: BorderRadius.circular(Radii.s),
                           onTap: () => _showFullImage(context, fullUrl),
-                          child: ClipRRect(
-                            borderRadius: BorderRadius.circular(14),
-                            child: Image.network(
-                              previewUrl,
-                              fit: BoxFit.cover,
-                              errorBuilder: (_, __, ___) => Container(
-                                color: Colors.grey.shade200,
-                                alignment: Alignment.center,
-                                child: const Icon(
-                                  Icons.image_not_supported,
-                                  color: Colors.grey,
-                                ),
-                              ),
-                            ),
+                          child: Semantics(
+                            label: 'Photo ${index + 1} of ${images.length}',
+                            button: true,
+                            child: NetworkThumb(previewUrl, radius: Radii.s),
                           ),
                         );
                       },

@@ -174,11 +174,17 @@ class WeatherCurrent {
   final double uvi;
   final int clouds;
   final int visibility;
+  final double feelsLike;
+  final int windDeg;
+  final int sunset;
   final WeatherSummary summary;
 
   WeatherCurrent({
     required this.dt,
     required this.temp,
+    required this.feelsLike,
+    required this.windDeg,
+    required this.sunset,
     required this.humidity,
     required this.pressure,
     required this.windSpeed,
@@ -243,6 +249,12 @@ class AppData with ChangeNotifier {
   WeatherDetails? weatherDetails;
   bool loading = true;
   bool error = false;
+
+  void setLoading() {
+    loading = true;
+    error = false;
+    notifyListeners();
+  }
 
   void setLoaded() {
     loading = false;
